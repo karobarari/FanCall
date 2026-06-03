@@ -1,0 +1,236 @@
+:root {
+  --bg: #ffffff;
+  --surface: #f4f4f2;
+  --text: #1a1a18;
+  --muted: #73726c;
+  --border: #e4e3de;
+  --accent: #0f6e56; /* pitch green — change this one line to rebrand */
+  --accent-soft: #e1f5ee;
+  --on-accent: #ffffff;
+  --radius: 12px;
+}
+
+/* Neutralize Vite template defaults so the app fills the page */
+#root {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+body {
+  display: block;
+  margin: 0;
+  background: #2c2c2a;
+}
+
+.shell {
+  max-width: 440px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+}
+.screen.center {
+  justify-content: center;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 500;
+  margin: 0;
+}
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Top bar with back button */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.back {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+/* Inputs */
+.field {
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 14px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
+  width: 100%;
+  box-sizing: border-box;
+}
+.field::placeholder { color: var(--muted); }
+
+/* Buttons */
+.btn {
+  height: 48px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+}
+.btn:active { transform: scale(0.99); }
+.ghost {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.logo {
+  width: 72px;
+  height: 72px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 auto;
+}
+.app-name { text-align: center; color: var(--muted); font-size: 15px; margin: 8px 0 16px; }
+
+/* Fixture / leaderboard rows */
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  background: var(--bg);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.row.static { cursor: default; }
+.row.me { background: var(--accent-soft); border-color: transparent; }
+.match { font-size: 15px; }
+.kickoff { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+.chip {
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.chip.done {
+  border-color: transparent;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+/* Metric card */
+.metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.metric .value { font-size: 24px; font-weight: 500; margin-top: 2px; }
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px dashed var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Predict score steppers */
+.match-bar {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+}
+.score-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 28px;
+}
+.colon { font-size: 28px; color: var(--muted); margin-bottom: 24px; }
+.stepper { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.team { font-size: 13px; color: var(--muted); }
+.score-box {
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 500;
+}
+.step-btns { display: flex; gap: 8px; }
+.step-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: none;
+  font-size: 22px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Bottom tab bar */
+.tabbar {
+  display: flex;
+  border-top: 1px solid var(--border);
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 14px;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.tab.active { color: var(--text); font-weight: 500; }
+
+.list { display: flex; flex-direction: column; gap: 8px; }
+.spacer { flex: 1; }
