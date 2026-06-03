@@ -1,169 +1,150 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
+import { apiGet, apiPost } from '../lib/api';
+import { useAuth } from '../auth/AuthContext';
 
-// --- Types -----------------------------------------------------------------
-export interface User {
-  id: string;
-  name: string;
-}
-export interface Score {
-  home: number;
-  away: number;
-}
+// --- Server-shaped types (snake_case to match the API responses) -----------
 export interface Fixture {
   id: string;
-  home: string;
-  away: string;
-  kickoff: string;
+  season: string;
+  gameweek: number;
+  home_team: string;
+  away_team: string;
+  kickoff: string; // ISO string
+  home_score: number | null;
+  away_score: number | null;
+  status: 'upcoming' | 'finished';
 }
-export interface FinishedFixture {
-  id: string;
-  home: string;
-  away: string;
-  result: Score;
-}
+
 export interface Prediction {
   home: number;
   away: number;
 }
-export interface Standing extends User {
-  points: number;
+
+export interface Standing {
+  user_id: string;
+  display_name: string | null;
+  total_points: number;
   rank: number;
 }
 
-// --- Fake auth: pretend this person is logged in ---------------------------
-export const currentUser: User = { id: 'u_you', name: 'You' };
-
-const users: User[] = [
-  currentUser,
-  { id: 'u_sam', name: 'Sam' },
-  { id: 'u_priya', name: 'Priya' },
-  { id: 'u_jordan', name: 'Jordan' },
-  { id: 'u_alex', name: 'Alex' },
-];
-
-// --- Upcoming fixtures: no result yet, these are what you predict ----------
-export const fixtures: Fixture[] = [
-  { id: 'f1', home: 'Arsenal', away: 'Chelsea', kickoff: 'Sat 15:00' },
-  { id: 'f2', home: 'Spurs', away: 'Leeds', kickoff: 'Sat 17:30' },
-  { id: 'f3', home: 'Everton', away: 'Forest', kickoff: 'Sun 14:00' },
-  { id: 'f4', home: 'Newcastle', away: 'Brighton', kickoff: 'Sun 16:30' },
-];
-
-// --- Finished fixtures: have a real result, these feed the leaderboard ------
-// In production you'd merge these into `fixtures` once each match ends.
-const finished: FinishedFixture[] = [
-  { id: 'p1', home: 'Liverpool', away: 'Villa', result: { home: 3, away: 1 } },
-  { id: 'p2', home: 'Man City', away: 'Wolves', result: { home: 2, away: 0 } },
-  { id: 'p3', home: 'Brentford', away: 'Fulham', result: { home: 1, away: 1 } },
-];
-
-// Seeded predictions so standings aren't empty on first run.
-const seed: { userId: string; fixtureId: string; home: number; away: number }[] = [
-  ['u_you', 'p1', 3, 1], ['u_you', 'p2', 1, 0], ['u_you', 'p3', 1, 1],
-  ['u_sam', 'p1', 2, 1], ['u_sam', 'p2', 2, 0], ['u_sam', 'p3', 2, 1],
-  ['u_priya', 'p1', 1, 1], ['u_priya', 'p2', 3, 1], ['u_priya', 'p3', 0, 0],
-  ['u_jordan', 'p1', 3, 0], ['u_jordan', 'p2', 1, 1], ['u_jordan', 'p3', 2, 2],
-  ['u_alex', 'p1', 0, 2], ['u_alex', 'p2', 1, 0], ['u_alex', 'p3', 1, 1],
-].map(([userId, fixtureId, home, away]) => ({
-  userId: userId as string,
-  fixtureId: fixtureId as string,
-  home: home as number,
-  away: away as number,
-}));
-
-// --- Scoring (pure, easy to unit test) -------------------------------------
-// 3 = exact score, 1 = right outcome (win/draw/loss), 0 = wrong.
-export function scorePrediction(
-  prediction: Prediction | undefined,
-  result: Score | undefined
-): number {
-  if (!prediction || !result) return 0;
-  if (prediction.home === result.home && prediction.away === result.away) return 3;
-  const guess = Math.sign(prediction.home - prediction.away);
-  const actual = Math.sign(result.home - result.away);
-  return guess === actual ? 1 : 0;
+interface PredictionRow {
+  fixture_id: string;
+  home_pred: number;
+  away_pred: number;
 }
 
-// Sum each user's points across all finished fixtures, ranked high to low.
-export function buildLeaderboard(): Standing[] {
-  const byId: Record<string, Score> = Object.fromEntries(
-    finished.map((f) => [f.id, f.result])
-  );
-  const totals = users.map((u) => {
-    const points = seed
-      .filter((p) => p.userId === u.id)
-      .reduce((sum, p) => sum + scorePrediction(p, byId[p.fixtureId]), 0);
-    return { ...u, points };
-  });
-  return totals
-    .sort((a, b) => b.points - a.points)
-    .map((row, i) => ({ ...row, rank: i + 1 }));
-}
-
-// --- Live predictions for upcoming fixtures (in-memory only) ---------------
-interface PredictionsCtx {
+interface DataContextValue {
+  fixtures: Fixture[];
   predictions: Record<string, Prediction>;
+  leaderboard: Standing[];
+  loading: boolean;
+  refresh: () => Promise<void>;
   hasPrediction: (fixtureId: string) => boolean;
   getPrediction: (fixtureId: string) => Prediction | undefined;
-  savePrediction: (fixtureId: string, home: number, away: number) => void;
+  savePrediction: (fixtureId: string, home: number, away: number) => Promise<void>;
 }
 
-const PredictionsContext = createContext<PredictionsCtx | null>(null);
+const DataContext = createContext<DataContextValue | null>(null);
 
-const STORAGE_KEY = 'fancall:predictions';
+export function DataProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [predictions, setPredictions] = useState<Record<string, Prediction>>({});
+  const [leaderboard, setLeaderboard] = useState<Standing[]>([]);
+  const [loading, setLoading] = useState(false);
 
-function loadPredictions(): Record<string, Prediction> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, Prediction>) : {};
-  } catch {
-    return {};
-  }
-}
+  const refresh = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const [f, p, l] = await Promise.all([
+        apiGet<{ fixtures: Fixture[] }>('/fixtures'),
+        apiGet<{ predictions: PredictionRow[] }>('/predictions'),
+        apiGet<{ leaderboard: Standing[] }>('/leaderboard'),
+      ]);
+      setFixtures(f.fixtures);
+      const map: Record<string, Prediction> = {};
+      for (const row of p.predictions) {
+        map[row.fixture_id] = { home: row.home_pred, away: row.away_pred };
+      }
+      setPredictions(map);
+      setLeaderboard(l.leaderboard);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
-export function PredictionsProvider({ children }: { children: ReactNode }) {
-  // Lazy initializer runs once, reading any saved predictions.
-  const [predictions, setPredictions] = useState<Record<string, Prediction>>(
-    loadPredictions
+  // Fetch on login; clear on logout.
+  useEffect(() => {
+    if (user) {
+      refresh().catch(() => {
+        // Errors are intentionally swallowed here — individual screens can
+        // surface their own; refresh() can be called again to retry.
+      });
+    } else {
+      setFixtures([]);
+      setPredictions({});
+      setLeaderboard([]);
+    }
+  }, [user, refresh]);
+
+  const savePrediction = useCallback(
+    async (fixtureId: string, home: number, away: number) => {
+      await apiPost<{ prediction: PredictionRow }>('/predictions', {
+        fixtureId,
+        home,
+        away,
+      });
+      // Optimistic cache update so the Fixtures chip flips on return.
+      setPredictions((prev) => ({ ...prev, [fixtureId]: { home, away } }));
+    },
+    []
   );
 
-  // Write back whenever predictions change.
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(predictions));
-    } catch {
-      // storage full or unavailable — fail quietly for the skeleton
-    }
-  }, [predictions]);
-
-  const value = useMemo<PredictionsCtx>(
+  const value = useMemo<DataContextValue>(
     () => ({
+      fixtures,
       predictions,
+      leaderboard,
+      loading,
+      refresh,
       hasPrediction: (id) => Boolean(predictions[id]),
       getPrediction: (id) => predictions[id],
-      savePrediction: (id, home, away) =>
-        setPredictions((prev) => ({ ...prev, [id]: { home, away } })),
+      savePrediction,
     }),
-    [predictions]
+    [fixtures, predictions, leaderboard, loading, refresh, savePrediction]
   );
 
-  return (
-    <PredictionsContext.Provider value={value}>
-      {children}
-    </PredictionsContext.Provider>
-  );
+  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
 
-export function usePredictions(): PredictionsCtx {
-  const ctx = useContext(PredictionsContext);
-  if (!ctx) throw new Error('usePredictions must be used inside PredictionsProvider');
+function useData(): DataContextValue {
+  const ctx = useContext(DataContext);
+  if (!ctx) throw new Error('useData must be used inside DataProvider');
   return ctx;
+}
+
+// --- Focused hooks ---------------------------------------------------------
+
+export function useFixtures() {
+  const { fixtures, loading, refresh } = useData();
+  return { fixtures, loading, refresh };
+}
+
+export function usePredictions() {
+  const { predictions, hasPrediction, getPrediction, savePrediction } = useData();
+  return { predictions, hasPrediction, getPrediction, savePrediction };
+}
+
+export function useLeaderboard() {
+  const { leaderboard, loading, refresh } = useData();
+  return { leaderboard, loading, refresh };
 }

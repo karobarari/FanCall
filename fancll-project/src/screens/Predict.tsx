@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fixtures, usePredictions } from '../data/store';
+import { useFixtures, usePredictions } from '../data/store';
 
 function Stepper({
   label,
@@ -30,12 +30,23 @@ function Stepper({
 export default function Predict() {
   const navigate = useNavigate();
   const { fixtureId } = useParams<{ fixtureId: string }>();
-  const fixture = fixtures.find((f) => f.id === fixtureId);
+  const { fixtures, loading } = useFixtures();
   const { getPrediction, savePrediction } = usePredictions();
 
+  const fixture = fixtures.find((f) => f.id === fixtureId);
   const existing = fixtureId ? getPrediction(fixtureId) : undefined;
   const [home, setHome] = useState(existing ? existing.home : 0);
   const [away, setAway] = useState(existing ? existing.away : 0);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (loading && fixtures.length === 0) {
+    return (
+      <div className="screen">
+        <p className="muted">Loading…</p>
+      </div>
+    );
+  }
 
   if (!fixture) {
     return (
@@ -48,10 +59,18 @@ export default function Predict() {
     );
   }
 
-  const submit = () => {
-    savePrediction(fixture.id, home, away);
-    navigate(-1);
-  };
+  async function submit() {
+    setError(null);
+    setBusy(true);
+    try {
+      await savePrediction(fixture!.id, home, away);
+      navigate(-1);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save prediction');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="screen">
@@ -67,24 +86,38 @@ export default function Predict() {
 
       <div className="match-bar">
         <div className="match" style={{ fontWeight: 500 }}>
-          {fixture.home} v {fixture.away}
+          {fixture.home_team} v {fixture.away_team}
         </div>
-        <div className="kickoff">{fixture.kickoff}</div>
+        <div className="kickoff">
+          {new Date(fixture.kickoff).toLocaleString(undefined, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </div>
       </div>
 
       <div className="score-row">
-        <Stepper label={fixture.home} value={home} onChange={setHome} />
+        <Stepper label={fixture.home_team} value={home} onChange={setHome} />
         <span className="colon">:</span>
-        <Stepper label={fixture.away} value={away} onChange={setAway} />
+        <Stepper label={fixture.away_team} value={away} onChange={setAway} />
       </div>
 
       <p className="muted" style={{ textAlign: 'center', marginTop: 24 }}>
         Locks at kickoff
       </p>
 
+      {error && (
+        <p style={{ color: '#c0392b', textAlign: 'center', fontSize: 13, margin: 0 }}>
+          {error}
+        </p>
+      )}
+
       <div className="spacer" />
-      <button className="btn" onClick={submit}>
-        Submit prediction
+      <button className="btn" onClick={submit} disabled={busy}>
+        {busy ? 'Saving…' : 'Submit prediction'}
       </button>
     </div>
   );
