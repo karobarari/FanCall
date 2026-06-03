@@ -33,6 +33,7 @@ create table predictions (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references users(id) on delete cascade,
   fixture_id  uuid not null references fixtures(id) on delete cascade,
+  result_pred text not null check (result_pred in ('home','draw','away')),
   home_pred   int not null check (home_pred >= 0),
   away_pred   int not null check (away_pred >= 0),
   created_at  timestamptz not null default now(),
@@ -50,15 +51,32 @@ create table scores (
   unique (user_id, fixture_id)
 );
 
--- Scoring rule: 3 = exact score, 1 = right outcome, 0 = wrong.
+-- Scoring rule: each of the three calls (result, home score, away score)
+-- scores independently — 10 if correct, 5 if submitted-but-wrong. All three
+-- correct earns a +20 bonus. A submitted prediction scores 15-50; perfect = 50.
 create or replace function score_prediction(
-  p_home int, p_away int, a_home int, a_away int
+  p_result text,   -- predicted outcome: 'home' | 'draw' | 'away'
+  p_home   int,    -- predicted home-team score
+  p_away   int,    -- predicted away-team score
+  a_home   int,    -- actual home-team score
+  a_away   int     -- actual away-team score
 ) returns int language sql immutable as $$
-  select case
-    when p_home = a_home and p_away = a_away then 3
-    when sign(p_home - p_away) = sign(a_home - a_away) then 1
-    else 0
-  end;
+  with calls as (
+    select
+      case
+        when p_result = case
+                          when a_home > a_away then 'home'
+                          when a_home < a_away then 'away'
+                          else 'draw'
+                        end then 10 else 5
+      end as result_pts,
+      case when p_home = a_home then 10 else 5 end as home_pts,
+      case when p_away = a_away then 10 else 5 end as away_pts
+  )
+  select result_pts + home_pts + away_pts
+       + case when result_pts = 10 and home_pts = 10 and away_pts = 10
+              then 20 else 0 end
+    from calls;
 $$;
 
 -- Settle a fixture: record the result and score every prediction for it.
@@ -72,7 +90,8 @@ begin
 
   insert into scores (user_id, fixture_id, points)
   select pr.user_id, pr.fixture_id,
-         score_prediction(pr.home_pred, pr.away_pred, p_home, p_away)
+         score_prediction(pr.result_pred, pr.home_pred, pr.away_pred,
+                           p_home, p_away)
     from predictions pr
    where pr.fixture_id = p_fixture_id
   on conflict (user_id, fixture_id)
