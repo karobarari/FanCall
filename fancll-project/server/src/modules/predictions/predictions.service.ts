@@ -1,12 +1,12 @@
-import { pool } from '../../db/pool';
-import { HttpError } from '../../lib/errors';
+import { pool } from "../../db/pool";
+import { HttpError } from "../../lib/errors";
 
 export async function listPredictions(userId: string) {
   const { rows } = await pool.query(
-    `select fixture_id, home_pred, away_pred, updated_at
+    `select fixture_id, home_pred, away_pred, result_pred, updated_at
        from predictions
       where user_id = $1`,
-    [userId]
+    [userId],
   );
   return rows;
 }
@@ -15,27 +15,32 @@ export async function upsertPrediction(
   userId: string,
   fixtureId: string,
   home: number,
-  away: number
+  away: number,
+  resultPred: "home" | "draw" | "away",
 ) {
-  const fixture = await pool.query('select status, kickoff from fixtures where id = $1', [
-    fixtureId,
-  ]);
-  if (!fixture.rowCount) throw new HttpError(404, 'Fixture not found');
+  const fixture = await pool.query(
+    "select status, kickoff from fixtures where id = $1",
+    [fixtureId],
+  );
+  if (!fixture.rowCount) throw new HttpError(404, "Fixture not found");
 
   const { status, kickoff } = fixture.rows[0];
-  if (status !== 'upcoming' || new Date(kickoff) <= new Date()) {
-    throw new HttpError(409, 'This match has locked');
+  if (status !== "upcoming" || new Date(kickoff) <= new Date()) {
+    throw new HttpError(409, "This match has locked");
   }
 
   const { rows } = await pool.query(
-    `insert into predictions (user_id, fixture_id, home_pred, away_pred)
-     values ($1, $2, $3, $4)
+    `insert into predictions (user_id, fixture_id, home_pred, away_pred, result_pred)
+     values ($1, $2, $3, $4, $5)
      on conflict (user_id, fixture_id)
-     do update set home_pred  = excluded.home_pred,
-                   away_pred  = excluded.away_pred,
-                   updated_at = now()
-     returning fixture_id, home_pred, away_pred, updated_at`,
-    [userId, fixtureId, home, away]
+     do update set home_pred   = excluded.home_pred,
+                   away_pred   = excluded.away_pred,
+                   result_pred = excluded.result_pred,
+                   updated_at  = now()
+     returning fixture_id, home_pred, away_pred, result_pred, updated_at`,
+    [userId, fixtureId, home, away, resultPred],
   );
+  console.log("Upserted prediction:", rows[0]);
+
   return rows[0];
 }

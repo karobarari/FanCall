@@ -6,9 +6,9 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from 'react';
-import { apiGet, apiPost } from '../lib/api';
-import { useAuth } from '../auth/AuthContext';
+} from "react";
+import { apiGet, apiPost } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 
 // --- Server-shaped types (snake_case to match the API responses) -----------
 export interface Fixture {
@@ -20,12 +20,13 @@ export interface Fixture {
   kickoff: string; // ISO string
   home_score: number | null;
   away_score: number | null;
-  status: 'upcoming' | 'finished';
+  status: "upcoming" | "finished";
 }
 
 export interface Prediction {
   home: number;
   away: number;
+  result_pred: "home" | "draw" | "away";
 }
 
 export interface Standing {
@@ -39,6 +40,7 @@ interface PredictionRow {
   fixture_id: string;
   home_pred: number;
   away_pred: number;
+  result_pred: "home" | "draw" | "away";
 }
 
 interface DataContextValue {
@@ -49,7 +51,12 @@ interface DataContextValue {
   refresh: () => Promise<void>;
   hasPrediction: (fixtureId: string) => boolean;
   getPrediction: (fixtureId: string) => Prediction | undefined;
-  savePrediction: (fixtureId: string, home: number, away: number) => Promise<void>;
+  savePrediction: (
+    fixtureId: string,
+    home: number,
+    away: number,
+    result_pred: "home" | "draw" | "away",
+  ) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -57,7 +64,9 @@ const DataContext = createContext<DataContextValue | null>(null);
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
-  const [predictions, setPredictions] = useState<Record<string, Prediction>>({});
+  const [predictions, setPredictions] = useState<Record<string, Prediction>>(
+    {},
+  );
   const [leaderboard, setLeaderboard] = useState<Standing[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -66,14 +75,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const [f, p, l] = await Promise.all([
-        apiGet<{ fixtures: Fixture[] }>('/fixtures'),
-        apiGet<{ predictions: PredictionRow[] }>('/predictions'),
-        apiGet<{ leaderboard: Standing[] }>('/leaderboard'),
+        apiGet<{ fixtures: Fixture[] }>("/fixtures"),
+        apiGet<{ predictions: PredictionRow[] }>("/predictions"),
+        apiGet<{ leaderboard: Standing[] }>("/leaderboard"),
       ]);
       setFixtures(f.fixtures);
       const map: Record<string, Prediction> = {};
       for (const row of p.predictions) {
-        map[row.fixture_id] = { home: row.home_pred, away: row.away_pred };
+        map[row.fixture_id] = {
+          home: row.home_pred,
+          away: row.away_pred,
+          result_pred: row.result_pred,
+        };
       }
       setPredictions(map);
       setLeaderboard(l.leaderboard);
@@ -97,16 +110,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [user, refresh]);
 
   const savePrediction = useCallback(
-    async (fixtureId: string, home: number, away: number) => {
-      await apiPost<{ prediction: PredictionRow }>('/predictions', {
-        fixtureId,
-        home,
-        away,
+    async (
+      fixtureId: string,
+      home: number,
+      away: number,
+      result_pred: "home" | "draw" | "away",
+    ) => {
+      await apiPost("/predictions", {
+        fixture_id: fixtureId,
+        home_pred: home,
+        away_pred: away,
+        result_pred,
       });
-      // Optimistic cache update so the Fixtures chip flips on return.
-      setPredictions((prev) => ({ ...prev, [fixtureId]: { home, away } }));
+      setPredictions((prev) => ({
+        ...prev,
+        [fixtureId]: { home, away, result_pred },
+      }));
     },
-    []
+    [],
   );
 
   const value = useMemo<DataContextValue>(
@@ -120,7 +141,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       getPrediction: (id) => predictions[id],
       savePrediction,
     }),
-    [fixtures, predictions, leaderboard, loading, refresh, savePrediction]
+    [fixtures, predictions, leaderboard, loading, refresh, savePrediction],
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
@@ -128,7 +149,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
 function useData(): DataContextValue {
   const ctx = useContext(DataContext);
-  if (!ctx) throw new Error('useData must be used inside DataProvider');
+  if (!ctx) throw new Error("useData must be used inside DataProvider");
   return ctx;
 }
 
@@ -140,7 +161,8 @@ export function useFixtures() {
 }
 
 export function usePredictions() {
-  const { predictions, hasPrediction, getPrediction, savePrediction } = useData();
+  const { predictions, hasPrediction, getPrediction, savePrediction } =
+    useData();
   return { predictions, hasPrediction, getPrediction, savePrediction };
 }
 

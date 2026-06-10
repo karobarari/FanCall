@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useFixtures, usePredictions } from '../data/store';
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useFixtures, usePredictions } from "../data/store";
+import { ResultSelector } from "../components/ResultSelector";
+import { clubIsHome, toResultPred, type ClubResult } from "../lib/result";
 
 function Stepper({
   label,
@@ -16,7 +18,10 @@ function Stepper({
       <span className="team">{label}</span>
       <div className="score-box">{value}</div>
       <div className="step-btns">
-        <button className="step-btn" onClick={() => onChange(Math.max(0, value - 1))}>
+        <button
+          className="step-btn"
+          onClick={() => onChange(Math.max(0, value - 1))}
+        >
           −
         </button>
         <button className="step-btn" onClick={() => onChange(value + 1)}>
@@ -37,6 +42,9 @@ export default function Predict() {
   const existing = fixtureId ? getPrediction(fixtureId) : undefined;
   const [home, setHome] = useState(existing ? existing.home : 0);
   const [away, setAway] = useState(existing ? existing.away : 0);
+  const [result, setResult] = useState<ClubResult | null>(
+    existing ? null : null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -59,14 +67,21 @@ export default function Predict() {
     );
   }
 
+  const locked = new Date(fixture.kickoff).getTime() <= Date.now();
+
   async function submit() {
+    if (!result) {
+      setError("Pick Win, Draw, or Lose first.");
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
-      await savePrediction(fixture!.id, home, away);
+      const result_pred = toResultPred(result, clubIsHome(fixture!));
+      await savePrediction(fixture!.id, home, away, result_pred);
       navigate(-1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save prediction');
+      setError(e instanceof Error ? e.message : "Could not save prediction");
     } finally {
       setBusy(false);
     }
@@ -90,14 +105,16 @@ export default function Predict() {
         </div>
         <div className="kickoff">
           {new Date(fixture.kickoff).toLocaleString(undefined, {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
           })}
         </div>
       </div>
+
+      <ResultSelector value={result} onChange={setResult} disabled={false} />
 
       <div className="score-row">
         <Stepper label={fixture.home_team} value={home} onChange={setHome} />
@@ -105,19 +122,26 @@ export default function Predict() {
         <Stepper label={fixture.away_team} value={away} onChange={setAway} />
       </div>
 
-      <p className="muted" style={{ textAlign: 'center', marginTop: 24 }}>
+      <p className="muted" style={{ textAlign: "center", marginTop: 24 }}>
         Locks at kickoff
       </p>
 
       {error && (
-        <p style={{ color: '#c0392b', textAlign: 'center', fontSize: 13, margin: 0 }}>
+        <p
+          style={{
+            color: "#c0392b",
+            textAlign: "center",
+            fontSize: 13,
+            margin: 0,
+          }}
+        >
           {error}
         </p>
       )}
 
       <div className="spacer" />
       <button className="btn" onClick={submit} disabled={busy}>
-        {busy ? 'Saving…' : 'Submit prediction'}
+        {busy ? "Saving…" : "Submit prediction"}
       </button>
     </div>
   );

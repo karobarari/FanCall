@@ -20,8 +20,7 @@
 body {
   display: block;
   margin: 0;
-  background: #2c2c2a;
-}
+background: var(--surface);}
 
 .shell {
   max-width: 440px;
@@ -234,3 +233,10 @@ body {
 
 .list { display: flex; flex-direction: column; gap: 8px; }
 .spacer { flex: 1; }
+.result-selector { display: flex; gap: 8px; }
+.result-btn {
+  flex: 1; padding: 10px 0; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.result-btn.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.result-btn:disabled { opacity: .5; cursor: not-allowed; }
