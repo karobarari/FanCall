@@ -9,6 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [displayName, setDisplayName] = useState("");
 
   if (user) return <Navigate to="/app" replace />;
 
@@ -17,7 +18,7 @@ export default function Login() {
     setBusy(true);
     try {
       if (action === "login") await login(email, password);
-      else await signup(email, password);
+      else await signup(email, password, displayName);
       navigate("/app");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -31,8 +32,17 @@ export default function Login() {
       <div className="w-[72px] h-[72px] border border-dashed border-[#e4e3de] rounded-xl flex items-center justify-center text-[#73726c] text-[13px] mx-auto">
         logo
       </div>
-      <p className="text-center text-[#73726c] text-[15px] mt-2 mb-4">FanCall</p>
-
+      <p className="text-center text-[#73726c] text-[15px] mt-2 mb-4">
+        FanCall
+      </p>
+      <input
+        className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border placeholder:text-[#73726c]"
+        placeholder="Display Name"
+        type="text"
+        autoComplete="name"
+        value={displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
+      />
       <input
         className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border placeholder:text-[#73726c]"
         placeholder="Email"
