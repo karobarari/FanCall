@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+import { useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 
 function navClass({ isActive }: { isActive: boolean }) {
   const base =
-    'flex items-center gap-[11px] py-[11px] px-[13px] rounded-[10px] no-underline text-sm font-medium transition-colors';
+    "flex items-center gap-[11px] py-[11px] px-[13px] rounded-[10px] no-underline text-sm font-medium transition-colors";
+
   return isActive
     ? `${base} bg-gold/15 text-gold`
     : `${base} text-muted hover:bg-white/[0.06] hover:text-ink`;
@@ -13,9 +14,11 @@ function navClass({ isActive }: { isActive: boolean }) {
 export default function AppLayout() {
   const { logout } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   async function handleLogout() {
     setSigningOut(true);
+
     try {
       await logout();
     } catch {
@@ -24,29 +27,71 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen w-full text-left bg-navy text-ink font-sans">
-      <aside className="w-56 shrink-0 bg-navy-deep border-r border-white/10 py-[22px] px-4 flex flex-col gap-7">
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-navy text-ink font-sans overflow-x-hidden">
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="fixed top-4 left-4 z-50 bg-navy-deep border border-white/10 text-ink p-2 rounded-md"
+        aria-label="Toggle menu"
+      >
+        {isOpen ? "✕" : "☰"}
+      </button>
+
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed top-0 left-0 h-screen w-56
+          bg-navy-deep border-r border-white/10
+          py-[22px] px-4 flex flex-col gap-7
+          z-40
+          transform transition-transform duration-300 ease-in-out
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+      >
+        <div className="flex items-center gap-3 pt-14">
           <div className="w-[42px] h-[42px] rounded-[11px] bg-gradient-to-br from-gold to-[#b9802a] text-[#1a1205] font-extrabold text-[15px] flex items-center justify-center tracking-[-0.5px]">
             FC
           </div>
+
           <div className="flex flex-col leading-[1.2]">
-            <span className="font-bold text-base tracking-[0.3px]">FanCall</span>
+            <span className="font-bold text-base tracking-[0.3px]">
+              FanCall
+            </span>
+
             <span className="text-[10px] text-faint uppercase tracking-[1px]">
               Sports Prediction Game
             </span>
           </div>
         </div>
 
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-1" onClick={() => setIsOpen(false)}>
           <NavLink to="/app" end className={navClass}>
-            <span className="text-[13px] w-4 text-center" aria-hidden>◆</span> Make Your Call
+            <span className="text-[13px] w-4 text-center" aria-hidden>
+              ◆
+            </span>
+            Make Your Call
           </NavLink>
+
           <NavLink to="/app/leaderboard" className={navClass}>
-            <span className="text-[13px] w-4 text-center" aria-hidden>▲</span> Leaderboard
+            <span className="text-[13px] w-4 text-center" aria-hidden>
+              ▲
+            </span>
+            Leaderboard
           </NavLink>
+
           <NavLink to="/app/admin" className={navClass}>
-            <span className="text-[13px] w-4 text-center" aria-hidden>⚙</span> Admin Dashboard
+            <span className="text-[13px] w-4 text-center" aria-hidden>
+              ⚙
+            </span>
+            Admin Dashboard
           </NavLink>
         </nav>
 
@@ -55,11 +100,19 @@ export default function AppLayout() {
           onClick={handleLogout}
           disabled={signingOut}
         >
-          {signingOut ? 'Signing out…' : 'Log out'}
+          {signingOut ? "Signing out…" : "Log out"}
         </button>
       </aside>
 
-      <main className="flex-1 min-w-0 py-7 px-8 overflow-y-auto">
+      {/* Main Content */}
+      <main
+        className={`
+          min-h-screen
+          transition-all duration-300
+          pt-16 px-8
+          ${isOpen ? "ml-56" : "ml-0"}
+        `}
+      >
         <Outlet />
       </main>
     </div>

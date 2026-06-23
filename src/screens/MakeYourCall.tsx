@@ -347,14 +347,6 @@ function ScoringGuide() {
       ptsCls: 'text-muted',
     },
     {
-      icon: '−',
-      label: 'Missed fixture',
-      note: 'Per call if no prediction submitted (12 total)',
-      pts: '+4',
-      iconCls: 'bg-white/10 text-muted',
-      ptsCls: 'text-muted',
-    },
-    {
       icon: '★',
       label: 'Perfect Call bonus',
       note: 'All 3 calls right — on top of the 30',
@@ -402,17 +394,6 @@ function ScoringGuide() {
         <span className="text-3xl font-extrabold text-gold">50 pts</span>
         <span className="text-[11px] text-faint">
           3 correct (30) + perfect bonus (20)
-        </span>
-      </div>
-
-      <div className="mt-2.5 p-4 rounded-[11px] bg-green/15 border border-green/30 flex flex-col gap-1">
-        <span className="text-[13px] font-semibold text-green">
-          🙌 Join Anytime
-        </span>
-        <span className="text-[11px] text-faint leading-[1.5]">
-          New players automatically get{' '}
-          <span className="text-ink font-semibold">12 pts</span> for every
-          fixture missed before joining — so you stay competitive all season.
         </span>
       </div>
     </aside>
