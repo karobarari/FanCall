@@ -2,33 +2,41 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import RequireAuth from './auth/RequireAuth';
 import { DataProvider } from './data/store';
-import TabLayout from './components/TabLayout';
+import AppLayout from './components/AppLayout';
 import Login from './screens/Login';
-import Fixtures from './screens/Fixtures';
-import Predict from './screens/Predict';
+import MakeYourCall from './screens/MakeYourCall';
 import Leaderboard from './screens/Leaderboard';
-import './styles.css';
+import Admin from './screens/Admin';
+import './playpage.css';
 
 function Routed() {
   const { loading } = useAuth();
   if (loading) {
     return (
-      <div className="screen center">
-        <p className="muted">Loading…</p>
+      <div className="min-h-screen flex items-center justify-center bg-navy text-muted font-sans">
+        Loading…
       </div>
     );
   }
   return (
     <Routes>
-      <Route path="/" element={<Login />} />
+      <Route
+        path="/"
+        element={
+          <div className="min-h-screen bg-[#f4f4f2] flex justify-center">
+            <div className="w-full max-w-[440px] bg-white min-h-screen flex flex-col">
+              <Login />
+            </div>
+          </div>
+        }
+      />
 
       <Route element={<RequireAuth />}>
-        <Route path="/app" element={<TabLayout />}>
-          <Route index element={<Navigate to="fixtures" replace />} />
-          <Route path="fixtures" element={<Fixtures />} />
+        <Route path="/app" element={<AppLayout />}>
+          <Route index element={<MakeYourCall />} />
           <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="admin" element={<Admin />} />
         </Route>
-        <Route path="/predict/:fixtureId" element={<Predict />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -41,9 +49,7 @@ export default function App() {
     <AuthProvider>
       <DataProvider>
         <BrowserRouter>
-          <div className="shell">
-            <Routed />
-          </div>
+          <Routed />
         </BrowserRouter>
       </DataProvider>
     </AuthProvider>

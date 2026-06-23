@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy:      #0a1729;
+  --color-navy-deep: #081320;
+  --color-panel:     #0f2238;
+  --color-panel-2:   #122a47;
+  --color-ink:       #e8eef7;
+  --color-muted:     #90a6c4;
+  --color-faint:     #61789a;
+  --color-gold:      #e3a93f;
+  --color-green:     #46c46a;
+  --color-flag:      #e0604f;
+  --radius-card:     14px;
+}
+
+/* Keep the app full-width and the type scale true. index.css sets #root to
+   1126px centered and the root font to 18px — both override here. */
+:root { font-size: 16px; }
+#root { max-width: none; width: 100%; margin: 0; text-align: left; }
