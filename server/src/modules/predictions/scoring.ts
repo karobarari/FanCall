@@ -7,10 +7,13 @@
 // +20 perfect-call bonus when all three are correct.
 // Range for a scored prediction: 15 (all wrong) .. 50 (perfect).
 //
-// Important distinction the higher-level functions enforce:
+// Important distinctions the higher-level functions enforce:
 //   - 15 is the floor for a prediction that WAS submitted on a PLAYED match.
-//   - 0 is for a missing prediction (fan didn't submit) or a void/unplayed
-//     fixture. No three calls were made, so there is nothing to score.
+//   - 12 (4 per call x 3) is the "missed fixture" credit: a fan who made no
+//     prediction on a FINISHED fixture. This also covers "join anytime" —
+//     fixtures finished before a fan joined are, for them, missed fixtures.
+//   - 0 is only for a void / unplayed fixture: it hasn't happened, so there is
+//     nothing to score and nothing to miss.
 //
 // Kept pure so settlement / a future background worker can import directly.
 
@@ -20,7 +23,8 @@ export const CORRECT = 10;
 export const WRONG = 5;
 export const PERFECT_BONUS = 20;
 export const MIN_SCORED = 15; // floor when a prediction was actually submitted
-export const NO_SCORE = 0; // missing prediction or void fixture
+export const MISSED = 12; // 4 per call x 3 calls: no prediction on a finished fixture
+export const NO_SCORE = 0; // void / unplayed fixture only — nothing to score or miss
 
 export interface Prediction {
   userId: string;
@@ -105,16 +109,22 @@ export function scoreFixture(
  *
  * @param prediction the fan's prediction, or null if they didn't submit one
  * @param result     the fixture result, or null if void / not played
- * @returns points; 0 if either the prediction or the result is absent.
+ * @returns points:
+ *   - void / unplayed fixture (result null)      -> 0  (nothing to miss yet)
+ *   - finished fixture, no prediction submitted  -> 12 (the missed-fixture credit)
+ *   - finished fixture, prediction submitted     -> 15..50 via scorePrediction
  *
- * This is the building block for totals: a no-show scores 0, NOT the 15
- * floor — the floor requires having submitted three (wrong) calls.
+ * This is the building block for totals. A no-show on a played fixture earns
+ * 12, NOT 0 and NOT the 15 floor — the floor still requires three (wrong) calls.
+ * Mirrors the SQL leaderboard view, which credits 12 for every finished fixture
+ * a fan has no scored row for.
  */
 export function scoreFixtureForUser(
   prediction: Prediction | null,
   result: FixtureResult | null,
 ): number {
-  if (prediction === null || result === null) return NO_SCORE;
+  if (result === null) return NO_SCORE; // void / not played — nothing to miss
+  if (prediction === null) return MISSED; // finished fixture, no submission
   return scorePrediction(
     prediction.resultPred,
     prediction.homePred,
@@ -126,8 +136,10 @@ export function scoreFixtureForUser(
 
 /**
  * A fan's running total across many fixtures (their leaderboard points).
- * Each entry pairs the fan's prediction (or null) with the result (or null);
- * void fixtures and skipped fixtures contribute 0.
+ * Pass one entry per fixture, pairing the fan's prediction (or null) with the
+ * result (or null). Void / unplayed fixtures add 0; a finished fixture the fan
+ * didn't predict adds the 12 missed-fixture credit; a predicted finished
+ * fixture adds 15..50.
  */
 export function userTotal(
   entries: { prediction: Prediction | null; result: FixtureResult | null }[],

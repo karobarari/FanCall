@@ -1,13 +1,13 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './auth/AuthContext';
-import RequireAuth from './auth/RequireAuth';
-import { DataProvider } from './data/store';
-import AppLayout from './components/AppLayout';
-import Login from './screens/Login';
-import MakeYourCall from './screens/MakeYourCall';
-import Leaderboard from './screens/Leaderboard';
-import Admin from './screens/Admin';
-import './playpage.css';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
+import RequireAuth from "./auth/RequireAuth";
+import { DataProvider } from "./data/store";
+import AppLayout from "./components/AppLayout";
+import Login from "./screens/Login";
+import MakeYourCall from "./screens/MakeYourCall";
+import Leaderboard from "./screens/Leaderboard";
+import Admin from "./screens/Admin";
+import "./playpage.css";
 
 function Routed() {
   const { loading } = useAuth();

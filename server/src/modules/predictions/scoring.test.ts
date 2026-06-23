@@ -11,6 +11,7 @@ import {
   WRONG,
   PERFECT_BONUS,
   NO_SCORE,
+  MISSED,
   type Prediction,
 } from "./scoring";
 
@@ -133,28 +134,28 @@ describe("scoreFixtureForUser", () => {
     expect(scoreFixtureForUser(pred, result)).toBe(50);
   });
 
-  // MISSING PREDICTION: fan didn't submit -> 0, NOT 15.
-  it("missing prediction (null) scores 0, not the 15 floor", () => {
-    expect(scoreFixtureForUser(null, result)).toBe(NO_SCORE);
-    expect(scoreFixtureForUser(null, result)).toBe(0);
+  // MISSED FIXTURE: fan didn't submit on a FINISHED fixture -> 12 (4 per call x 3).
+  it("missing prediction on a finished fixture scores the 12 missed credit", () => {
+    expect(scoreFixtureForUser(null, result)).toBe(MISSED);
+    expect(scoreFixtureForUser(null, result)).toBe(12);
   });
 
   it("void fixture scores 0 even with a prediction", () => {
-    expect(scoreFixtureForUser(pred, null)).toBe(0);
+    expect(scoreFixtureForUser(pred, null)).toBe(NO_SCORE);
   });
 
-  it("both missing scores 0", () => {
-    expect(scoreFixtureForUser(null, null)).toBe(0);
+  it("both missing (no result) scores 0 — can't miss an unplayed fixture", () => {
+    expect(scoreFixtureForUser(null, null)).toBe(NO_SCORE);
   });
 
-  it("a submitted-but-all-wrong prediction still earns the 15 floor", () => {
+  it("a submitted-but-all-wrong prediction still beats a missed fixture (15 > 12)", () => {
     const wrong: Prediction = {
       userId: "bob",
       resultPred: "away",
       homePred: 0,
       awayPred: 5,
     };
-    // distinguishes 15 (submitted, wrong) from 0 (didn't submit)
+    // distinguishes 15 (submitted, wrong) from 12 (didn't submit)
     expect(scoreFixtureForUser(wrong, result)).toBe(15);
   });
 });
@@ -212,7 +213,7 @@ describe("userTotal", () => {
     expect(total).toBe(50);
   });
 
-  it("skips missing predictions (they add 0)", () => {
+  it("credits missed fixtures (a finished fixture with no prediction adds 12)", () => {
     const total = userTotal([
       {
         prediction: {
@@ -223,16 +224,16 @@ describe("userTotal", () => {
         },
         result,
       }, // 50
-      { prediction: null, result }, // 0, didn't submit
+      { prediction: null, result }, // 12, missed (finished, no submission)
     ]);
-    expect(total).toBe(50);
+    expect(total).toBe(62);
   });
 
   it("empty history totals 0", () => {
     expect(userTotal([])).toBe(0);
   });
 
-  it("a fan who submitted wrong calls outscores a no-show (15 vs 0)", () => {
+  it("a fan who submitted wrong calls outscores a missed fixture (15 vs 12)", () => {
     const guesser = userTotal([
       {
         prediction: {
@@ -244,9 +245,9 @@ describe("userTotal", () => {
         result,
       }, // 15
     ]);
-    const noShow = userTotal([{ prediction: null, result }]); // 0
+    const noShow = userTotal([{ prediction: null, result }]); // 12, missed
     expect(guesser).toBe(15);
-    expect(noShow).toBe(0);
+    expect(noShow).toBe(12);
     expect(guesser).toBeGreaterThan(noShow);
   });
 });

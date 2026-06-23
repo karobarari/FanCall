@@ -3,12 +3,20 @@ import { describe, it, expect, beforeEach, afterAll } from "@jest/globals";
 
 // SQL tests run against fancall_test, NEVER the dev DB — settle_fixture writes
 // rows, so we use a throwaway database the tests can truncate freely.
-const pool = new Pool({
-  host: "localhost",
-  user: "karod",
-  database: "fancall_test",
-  // password comes from PGPASSWORD env var when you run the tests
-});
+//
+// Credentials come from the same DATABASE_URL the app uses (loaded from .env by
+// jest.setup.ts); we just swap the database name to fancall_test so we never
+// touch dev data. Set TEST_DATABASE_URL to point somewhere else explicitly.
+const testDatabaseUrl = (() => {
+  if (process.env.TEST_DATABASE_URL) return process.env.TEST_DATABASE_URL;
+  const url = new URL(
+    process.env.DATABASE_URL ?? "postgres://karod@localhost:5432/karod",
+  );
+  url.pathname = "/fancall_test";
+  return url.toString();
+})();
+
+const pool = new Pool({ connectionString: testDatabaseUrl });
 
 afterAll(async () => {
   await pool.end();
