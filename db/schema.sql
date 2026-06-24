@@ -1,18 +1,58 @@
 -- FanCall — database schema (PostgreSQL)
 -- Runs on any Postgres host: Supabase, Neon, Vercel Postgres, local.
--- Mirrors the app's data model and the 3/1/0 scoring rule.
+-- Mirrors the app's data model and the scoring rule.
 
 create extension if not exists "pgcrypto";  -- for gen_random_uuid()
 
+-- Clubs a fan can represent. Reference data — seeded below with the current
+-- Premier League (2026/27). NOTE: fixtures carry free-text team names; this
+-- table is the fan's chosen club, and it's the key the multi-club isolation
+-- work will scope on later. Keep the list editable as promotions/relegations
+-- change the division each season.
+create table teams (
+  id         uuid primary key default gen_random_uuid(),
+  name       text unique not null,
+  created_at timestamptz not null default now()
+);
+
+insert into teams (name) values
+  ('Arsenal'),
+  ('Aston Villa'),
+  ('AFC Bournemouth'),
+  ('Brentford'),
+  ('Brighton & Hove Albion'),
+  ('Chelsea'),
+  ('Coventry City'),
+  ('Crystal Palace'),
+  ('Everton'),
+  ('Fulham'),
+  ('Hull City'),
+  ('Ipswich Town'),
+  ('Leeds United'),
+  ('Liverpool'),
+  ('Manchester City'),
+  ('Manchester United'),
+  ('Newcastle United'),
+  ('Nottingham Forest'),
+  ('Sunderland'),
+  ('Tottenham Hotspur');
+
 -- Users. Auth runs in the Express API, so the bcrypt password hash lives here.
 -- Never store plaintext passwords.
+--   display_name = the fan's username: required, and unique case-insensitively
+--                  (enforced by the lower(display_name) index below).
+--   team_id      = the club the fan chose at signup (required).
 create table users (
   id            uuid primary key default gen_random_uuid(),
   email         text unique not null,
   password_hash text not null,
-  display_name  text,
+  display_name  text not null,
+  team_id       uuid not null references teams(id),
   created_at    timestamptz not null default now()
 );
+
+-- Usernames are unique regardless of case ('Gooner' == 'gooner').
+create unique index users_display_name_lower_idx on users (lower(display_name));
 
 create table fixtures (
   id          uuid primary key default gen_random_uuid(),

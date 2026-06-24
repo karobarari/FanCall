@@ -9,7 +9,7 @@ import {
 } from "react";
 import { apiGet, apiPost } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
-
+; 
 // --- Server-shaped types (snake_case to match the API responses) -----------
 export interface Fixture {
   id: string;
@@ -49,7 +49,6 @@ interface DataContextValue {
   leaderboard: Standing[];
   loading: boolean;
   refresh: () => Promise<void>;
-  hasPrediction: (fixtureId: string) => boolean;
   getPrediction: (fixtureId: string) => Prediction | undefined;
   savePrediction: (
     fixtureId: string,
@@ -137,7 +136,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       leaderboard,
       loading,
       refresh,
-      hasPrediction: (id) => Boolean(predictions[id]),
       getPrediction: (id) => predictions[id],
       savePrediction,
     }),
@@ -161,9 +159,9 @@ export function useFixtures() {
 }
 
 export function usePredictions() {
-  const { predictions, hasPrediction, getPrediction, savePrediction } =
+  const { predictions, getPrediction, savePrediction } =
     useData();
-  return { predictions, hasPrediction, getPrediction, savePrediction };
+  return { predictions, getPrediction, savePrediction };
 }
 
 export function useLeaderboard() {

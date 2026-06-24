@@ -13,8 +13,3 @@
   --color-flag:      #e0604f;
   --radius-card:     14px;
 }
-
-/* Keep the app full-width and the type scale true. index.css sets #root to
-   1126px centered and the root font to 18px — both override here. */
-:root { font-size: 16px; }
-#root { max-width: none; width: 100%; margin: 0; text-align: left; }
