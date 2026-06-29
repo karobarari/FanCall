@@ -3,7 +3,12 @@ import { z } from "zod";
 import { asyncHandler } from "../../middleware/asyncHandler";
 import { requireAuth, requireAdmin } from "../../middleware/auth";
 import { HttpError } from "../../lib/errors";
-import { listFixtures, settleFixture } from "./fixtures.service";
+import {
+  listFixtures,
+  settleFixture,
+  createFixture, // ── NEW ──
+  updateFixture, // ── NEW ──
+} from "./fixtures.service";
 
 export const fixturesRoutes = Router();
 
@@ -53,3 +58,77 @@ fixturesRoutes.post(
     res.json({ fixture });
   }),
 );
+
+// ── NEW ──────────────────────────────────────────────────────────
+// Shared fixture-metadata fields. Scores are deliberately excluded — they're
+// owned by the settle route, never set on create/edit.
+// kickoff expects an ISO 8601 string (e.g. "2025-08-16T14:00:00.000Z"); the
+// frontend sends new Date(<datetime-local value>).toISOString().
+const fixtureFields = {
+  season: z.string().min(1),
+  gameweek: z.number().int().min(1),
+  home_team: z.string().min(1),
+  away_team: z.string().min(1),
+  kickoff: z.string().datetime(),
+};
+
+const createFixtureBody = z
+  .object(fixtureFields)
+  .refine((b) => b.home_team !== b.away_team, {
+    message: "Home and away teams must differ",
+  });
+
+const updateFixtureBody = z
+  .object({
+    season: fixtureFields.season.optional(),
+    gameweek: fixtureFields.gameweek.optional(),
+    home_team: fixtureFields.home_team.optional(),
+    away_team: fixtureFields.away_team.optional(),
+    kickoff: fixtureFields.kickoff.optional(),
+  })
+  .refine((b) => Object.keys(b).length > 0, {
+    message: "Provide at least one field to update",
+  })
+  .refine((b) => !(b.home_team && b.away_team) || b.home_team !== b.away_team, {
+    message: "Home and away teams must differ",
+  });
+
+// POST /api/fixtures  (admin only) — schedule a new fixture
+fixturesRoutes.post(
+  "/",
+  requireAuth,
+  asyncHandler(requireAdmin),
+  asyncHandler(async (req, res) => {
+    const parsed = createFixtureBody.safeParse(req.body);
+    if (!parsed.success) {
+      throw new HttpError(
+        400,
+        parsed.error.issues[0]?.message ?? "Invalid fixture",
+      );
+    }
+    const fixture = await createFixture(parsed.data);
+    res.status(201).json({ fixture });
+  }),
+);
+
+// PATCH /api/fixtures/:id  (admin only) — edit fixture metadata (not the score)
+fixturesRoutes.patch(
+  "/:id",
+  requireAuth,
+  asyncHandler(requireAdmin),
+  asyncHandler(async (req, res) => {
+    if (!z.string().uuid().safeParse(req.params.id).success) {
+      throw new HttpError(400, "Invalid fixture id");
+    }
+    const parsed = updateFixtureBody.safeParse(req.body);
+    if (!parsed.success) {
+      throw new HttpError(
+        400,
+        parsed.error.issues[0]?.message ?? "Invalid update",
+      );
+    }
+    const fixture = await updateFixture(req.params.id, parsed.data);
+    res.json({ fixture });
+  }),
+);
+// ─────────────────────────────────────────────────────────────────

@@ -139,6 +139,9 @@ begin
 end;
 $$;
 
+create unique index if not exists fixtures_identity_uniq
+  on fixtures (season, gameweek, home_team, away_team);
+  
 create view leaderboard as
   select u.id as user_id,
          u.display_name,
