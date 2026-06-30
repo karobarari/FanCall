@@ -1,4 +1,4 @@
-import type { MatchResult } from './result';
+import type { MatchResult } from "./result";
 
 // Frontend mirror of the server's score_prediction() SQL function.
 // Each of the three calls (result, home score, away score) scores 10 if correct
@@ -9,10 +9,10 @@ export function scorePrediction(
 ): { points: number; perfect: boolean } {
   const actualResult: MatchResult =
     actual.home_score > actual.away_score
-      ? 'home'
+      ? "home"
       : actual.home_score < actual.away_score
-        ? 'away'
-        : 'draw';
+        ? "away"
+        : "draw";
 
   const resultPts = pred.result_pred === actualResult ? 10 : 5;
   const homePts = pred.home === actual.home_score ? 10 : 5;
@@ -24,3 +24,12 @@ export function scorePrediction(
     perfect: allRight,
   };
 }
+
+// Credit for a finished fixture with no prediction submitted.
+// 4 points per call × 3 calls (result, home, away). No perfect bonus.
+// Covers both "Missed Fixture" (existing player didn't predict) and
+// "Join Anytime" (player joined after the fixture finished).
+// NOTE: 12 sits intentionally BELOW the 15-point floor of scorePrediction —
+// not predicting should score worse than predicting everything wrong.
+// Do not "fix" this to 15.
+export const MISSED_FIXTURE_POINTS = 12;

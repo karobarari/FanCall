@@ -12,8 +12,7 @@ const FIXTURE_COLUMNS = `id, season, gameweek, home_team, away_team, kickoff,
 // column's pre-finished value (whatever schema.sql / the seed uses). If the
 // `status` column already has a DEFAULT, you can instead drop `status` from
 // the INSERT in createFixture and let the default apply.
-const NEW_FIXTURE_STATUS = "scheduled";
-
+const NEW_FIXTURE_STATUS = "upcoming";
 function isUniqueViolation(err: unknown): boolean {
   return (
     typeof err === "object" &&

@@ -19,6 +19,13 @@
 --         + 12 * (number of FINISHED fixtures the fan has no scored row for)
 --   Upcoming fixtures never count — only status = 'finished'. The 12 is
 --   4 points per call across the 3 calls (result, home score, away score).
+--   Keep the 12 in sync with MISSED_FIXTURE_POINTS in scoring.ts.
+--
+-- INVARIANT MADE EXPLICIT
+--   The scores join is restricted to FINISHED fixtures. This guarantees
+--   count(s.id) <= f.n, so the missed term 12 * (f.n - count(s.id)) can never
+--   go negative — even if a score row ever exists for a non-finished fixture.
+--   Without this guard the leaderboard would silently DOCK points in that case.
 --
 -- This only redefines a VIEW, so it is safe and instant on a populated DB:
 -- nothing is dropped, no rows are written.
@@ -38,7 +45,10 @@ create or replace view leaderboard as
     12 * (f.n - count(s.id))                              as missed_points
   from users u
   cross join finished f
+  -- finished-only guard: count(s.id) counts scores on FINISHED fixtures only,
+  -- so it is provably <= f.n and the missed term stays >= 0.
   left join scores s on s.user_id = u.id
+    and s.fixture_id in (select id from fixtures where status = 'finished')
   group by u.id, u.display_name, f.n
   order by total_points desc;
 

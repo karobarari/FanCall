@@ -66,32 +66,32 @@ create index if not exists idx_scores_user_id on scores (user_id);
 -- Leaderboard view: total points per user, with 12-pt missed-fixture credit.
 -- Missed fixtures (finished, no prediction) earn 4 pts per call × 3 calls = 12 pts.
 -- Computed at read time to reflect settle-and-score immediately.
+Leaderboard view: total points per user, with 12-pt missed-fixture credit.
+-- Missed fixtures (finished, no scored prediction) earn 4 pts per call × 3
+-- calls = 12 pts. Both "Missed Fixture" and "Join Anytime" are the same case:
+-- a finished fixture the fan has no scored row for. Computed at read time to
+-- reflect settle-and-score immediately. Keep 12 in sync with
+-- MISSED_FIXTURE_POINTS in scoring.ts.
 create or replace view leaderboard as
+  with finished as (
+    select count(*)::int as n from fixtures where status = 'finished'
+  )
   select
-    u.id as user_id,
+    u.id           as user_id,
     u.display_name,
-    coalesce(
-      sum(s.points) filter (where f.status = 'finished')
-      + (
-        select count(*) * 12
-        from fixtures f2
-        where f2.status = 'finished'
-          and not exists (
-            select 1 from predictions p
-            where p.user_id = u.id and p.fixture_id = f2.id
-          )
-      ),
-      0
-    ) as total_points
+    coalesce(sum(s.points), 0) + 12 * (f.n - count(s.id)) as total_points,
+    coalesce(sum(s.points), 0)                            as predicted_points,
+    12 * (f.n - count(s.id))                              as missed_points
   from users u
+  cross join finished f
+  -- finished-only guard keeps count(s.id) <= f.n, so missed term stays >= 0
   left join scores s on s.user_id = u.id
-  left join fixtures f on s.fixture_id = f.id
-  group by u.id, u.display_name
+    and s.fixture_id in (select id from fixtures where status = 'finished')
+  group by u.id, u.display_name, f.n
   order by total_points desc;
 
--- Leaderboard with rank: competitive ranking (ties share a rank, next rank skips).
--- Example: 1, 2, 2, 4 (not 1, 2, 3, 4).
--- Computed at read time to reflect live standings.
+-- Leaderboard with rank: competitive ranking (ties share a rank, next rank
+-- skips). Example: 1, 2, 2, 4 (not 1, 2, 3, 4). Computed at read time.
 create or replace view leaderboard_ranked as
   select
     user_id,
@@ -99,3 +99,7 @@ create or replace view leaderboard_ranked as
     total_points,
     rank() over (order by total_points desc) as rank
   from leaderboard;
+
+-- Leaderboard with rank: competitive ranking (ties share a rank, next rank skips).
+-- Example: 1, 2, 2, 4 (not 1, 2, 3, 4).
+-- Computed at read time to reflect live standings.
