@@ -19,14 +19,9 @@ export function useAdminData() {
    setFxState("loading");
    try {
      const res = await fetch(API.fixtures, { credentials: "include" });
-     // Correctly checks for HTTP errors
-     console.log('1', API.fixtures);
-     console.log('1', res);
-
      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
      const json: unknown = await res.json();
-     console.log("2", json);
 
      const arr =
        isObj(json) && Array.isArray(json.fixtures)
@@ -34,8 +29,6 @@ export function useAdminData() {
          : Array.isArray(json)
            ? (json as Fixture[])
            : [];
-     console.log("3", arr);
-
      setFixtures(arr);
      setFxState("ready");
    } catch{
