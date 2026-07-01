@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { API_URL } from "../lib/api";
+import { API_URL, apiGet } from "../lib/api";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   denied: "Sign-in was cancelled.",
@@ -9,6 +9,11 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   conflict: "An account already exists with this email — log in with your password instead.",
   failed: "Something went wrong signing you in. Please try again.",
 };
+
+interface Team {
+  id: string;
+  name: string;
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -21,6 +26,22 @@ export default function Login() {
   );
   const [busy, setBusy] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [teamId, setTeamId] = useState("");
+
+  // Only needed for signup, but the endpoint is public and cheap, so fetch
+  // once up front rather than gating it on which button gets clicked.
+  useEffect(() => {
+    apiGet<{ teams: Team[] }>("/teams")
+      .then(({ teams }) => {
+        setTeams(teams);
+        if (teams.length) setTeamId(teams[0].id);
+      })
+      .catch(() => {
+        // Login still works without this; signup will just surface the
+        // "pick a team" error from the server if it's tried.
+      });
+  }, []);
 
   if (user) return <Navigate to="/app" replace />;
 
@@ -29,7 +50,7 @@ export default function Login() {
     setBusy(true);
     try {
       if (action === "login") await login(email, password);
-      else await signup(email, password, displayName);
+      else await signup(email, password, displayName, teamId);
       navigate("/app");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -54,6 +75,17 @@ export default function Login() {
         value={displayName}
         onChange={(e) => setDisplayName(e.target.value)}
       />
+      <select
+        className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border"
+        value={teamId}
+        onChange={(e) => setTeamId(e.target.value)}
+      >
+        {teams.map((team) => (
+          <option key={team.id} value={team.id}>
+            {team.name}
+          </option>
+        ))}
+      </select>
       <input
         className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border placeholder:text-[#73726c]"
         placeholder="Email"

@@ -7,6 +7,7 @@ import { env, isProd } from '../../config/env';
 import { setSession } from '../../lib/session';
 import { signOAuthPending, verifyOAuthPending } from '../../lib/jwt';
 import { getAppleProvider, getGoogleProvider, parseIdTokenClaims } from '../../lib/oauthProviders';
+import { USERNAME_MESSAGE, USERNAME_PATTERN } from '../../lib/username';
 import { completeOAuthSignup, resolveOAuthLogin, type OAuthIdentity } from './oauth.service';
 
 export const oauthRoutes = Router();
@@ -162,9 +163,7 @@ oauthRoutes.post(
 
 const completeBody = z.object({
   team_id: z.string().uuid(),
-  display_name: z
-    .string()
-    .regex(/^[a-zA-Z0-9_]{3,20}$/, 'Username must be 3-20 characters: letters, numbers, underscore'),
+  display_name: z.string().regex(USERNAME_PATTERN, USERNAME_MESSAGE),
 });
 
 // POST /api/auth/oauth/complete — the "needs_profile" step: a brand-new

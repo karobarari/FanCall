@@ -5,28 +5,34 @@ import { requireAuth } from '../../middleware/auth';
 import { authRateLimit } from '../../middleware/rateLimit';
 import { setSession, clearSession } from '../../lib/session';
 import { HttpError } from '../../lib/errors';
+import { USERNAME_MESSAGE, USERNAME_PATTERN } from '../../lib/username';
 import * as authService from './auth.service';
 
 export const authRoutes = Router();
 
-const credentials = z.object({
+const emailPassword = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  displayName: z.string().min(1).max(40).optional(),
+});
+
+const signupBody = emailPassword.extend({
+  displayName: z.string().regex(USERNAME_PATTERN, USERNAME_MESSAGE),
+  team_id: z.string().uuid(),
 });
 
 authRoutes.post(
   '/signup',
   authRateLimit,
   asyncHandler(async (req, res) => {
-    const parsed = credentials.safeParse(req.body);
+    const parsed = signupBody.safeParse(req.body);
     if (!parsed.success) {
-      throw new HttpError(400, 'Need a valid email and a password of at least 8 characters');
+      throw new HttpError(400, parsed.error.issues[0]?.message ?? 'Invalid signup');
     }
     const user = await authService.signup(
       parsed.data.email,
       parsed.data.password,
-      parsed.data.displayName
+      parsed.data.displayName,
+      parsed.data.team_id
     );
     setSession(res, user.id);
     res.status(201).json({ user });
@@ -37,7 +43,7 @@ authRoutes.post(
   '/login',
   authRateLimit,
   asyncHandler(async (req, res) => {
-    const parsed = credentials.pick({ email: true, password: true }).safeParse(req.body);
+    const parsed = emailPassword.safeParse(req.body);
     if (!parsed.success) throw new HttpError(400, 'Invalid credentials');
     const user = await authService.login(parsed.data.email, parsed.data.password);
     setSession(res, user.id);

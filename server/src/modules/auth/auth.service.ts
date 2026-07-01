@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../../db/pool';
 import { hashPassword, verifyPassword } from '../../lib/password';
-import { HttpError } from '../../lib/errors';
+import { HttpError, isUniqueViolation } from '../../lib/errors';
 
 // Bcrypt hash of an arbitrary fixed string, used only so login always pays
 // the cost of a bcrypt.compare — otherwise a nonexistent-email request
@@ -18,19 +18,28 @@ export interface PublicUser {
 export async function signup(
   email: string,
   password: string,
-  displayName?: string
+  displayName: string,
+  teamId: string
 ): Promise<PublicUser> {
   const existing = await pool.query('select 1 from users where email = $1', [email]);
   if (existing.rowCount) throw new HttpError(409, 'That email is already registered');
 
+  const team = await pool.query('select 1 from teams where id = $1', [teamId]);
+  if (!team.rowCount) throw new HttpError(400, 'Unknown team');
+
   const hash = await hashPassword(password);
-  const { rows } = await pool.query(
-    `insert into users (email, password_hash, display_name)
-     values ($1, $2, $3)
-     returning id, email, display_name`,
-    [email, hash, displayName ?? email.split('@')[0]]
-  );
-  return rows[0];
+  try {
+    const { rows } = await pool.query(
+      `insert into users (email, password_hash, display_name, team_id)
+       values ($1, $2, $3, $4)
+       returning id, email, display_name`,
+      [email, hash, displayName, teamId]
+    );
+    return rows[0];
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new HttpError(409, 'That username is already taken');
+    throw err;
+  }
 }
 
 export async function login(email: string, password: string): Promise<PublicUser> {

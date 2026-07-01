@@ -96,9 +96,9 @@ describe("settle_fixture (live SQL) — integration", () => {
     await pool.query("TRUNCATE scores, predictions, fixtures, users CASCADE");
 
     await pool.query(
-      `INSERT INTO users (id, email, display_name, password_hash)
-       VALUES ($1, 'alice@test.dev', 'Alice', 'x'),
-              ($2, 'bob@test.dev', 'Bob', 'x')`,
+      `INSERT INTO users (id, email, display_name, password_hash, team_id)
+       VALUES ($1, 'alice@test.dev', 'Alice', 'x', (SELECT id FROM teams LIMIT 1)),
+              ($2, 'bob@test.dev', 'Bob', 'x', (SELECT id FROM teams LIMIT 1))`,
       [ALICE, BOB],
     );
 
