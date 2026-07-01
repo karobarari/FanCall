@@ -21,6 +21,10 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
+  // Re-checks who's signed in against the session cookie. Used after a flow
+  // that sets the cookie outside AuthContext's own login/signup calls — e.g.
+  // finishing the OAuth "pick a team" step.
+  refreshMe: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -70,9 +74,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const refreshMe = useCallback(async () => {
+    try {
+      const { user } = await apiGet<{ user: User }>('/auth/me');
+      setUser(user);
+    } catch {
+      setUser(null);
+    }
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, login, signup, logout }),
-    [user, loading, login, signup, logout]
+    () => ({ user, loading, login, signup, logout, refreshMe }),
+    [user, loading, login, signup, logout, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

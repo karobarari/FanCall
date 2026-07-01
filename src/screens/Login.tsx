@@ -1,13 +1,24 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { API_URL } from "../lib/api";
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  denied: "Sign-in was cancelled.",
+  session: "That sign-in link expired — please try again.",
+  conflict: "An account already exists with this email — log in with your password instead.",
+  failed: "Something went wrong signing you in. Please try again.",
+};
 
 export default function Login() {
   const navigate = useNavigate();
   const { user, login, signup } = useAuth();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    () => OAUTH_ERROR_MESSAGES[searchParams.get("oauth_error") ?? ""] ?? null,
+  );
   const [busy, setBusy] = useState(false);
   const [displayName, setDisplayName] = useState("");
 
@@ -78,6 +89,25 @@ export default function Login() {
       >
         Create account
       </button>
+
+      <div className="flex items-center gap-3 my-1 text-[#73726c] text-[13px]">
+        <div className="flex-1 h-px bg-[#e4e3de]" />
+        or
+        <div className="flex-1 h-px bg-[#e4e3de]" />
+      </div>
+
+      <a
+        href={`${API_URL}/auth/google`}
+        className="h-12 rounded-xl border border-[#e4e3de] text-[#1a1a18] text-[15px] font-medium w-full flex items-center justify-center no-underline active:scale-[0.99]"
+      >
+        Continue with Google
+      </a>
+      <a
+        href={`${API_URL}/auth/apple`}
+        className="h-12 rounded-xl border border-[#e4e3de] text-[#1a1a18] text-[15px] font-medium w-full flex items-center justify-center no-underline active:scale-[0.99]"
+      >
+        Continue with Apple
+      </a>
     </div>
   );
 }

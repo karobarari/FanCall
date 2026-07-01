@@ -9,3 +9,9 @@ export class HttpError extends Error {
     this.name = 'HttpError';
   }
 }
+
+// True for Postgres' unique_violation (23505) — the code every service uses
+// to turn a duplicate-key insert into a 409 instead of a 500.
+export function isUniqueViolation(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === '23505';
+}

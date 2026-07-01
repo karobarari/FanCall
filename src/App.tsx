@@ -4,6 +4,7 @@ import RequireAuth from "./auth/RequireAuth";
 import { DataProvider } from "./data/store";
 import AppLayout from "./components/AppLayout";
 import Login from "./screens/Login";
+import CompleteSignup from "./screens/CompleteSignup";
 import MakeYourCall from "./screens/MakeYourCall";
 import Leaderboard from "./screens/Leaderboard";
 import Admin from "./screens/Admin";
@@ -26,6 +27,17 @@ function Routed() {
           <div className="min-h-screen bg-[#f4f4f2] flex justify-center">
             <div className="w-full max-w-[440px] bg-white min-h-screen flex flex-col">
               <Login />
+            </div>
+          </div>
+        }
+      />
+
+      <Route
+        path="/complete-signup"
+        element={
+          <div className="min-h-screen bg-[#f4f4f2] flex justify-center">
+            <div className="w-full max-w-[440px] bg-white min-h-screen flex flex-col">
+              <CompleteSignup />
             </div>
           </div>
         }
