@@ -13,6 +13,8 @@ export interface User {
   id: string;
   email: string;
   display_name: string | null;
+  team_id: string;
+  team_name: string;
 }
 
 interface AuthContextValue {
