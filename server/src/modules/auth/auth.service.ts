@@ -1,6 +1,13 @@
+import bcrypt from 'bcryptjs';
 import { pool } from '../../db/pool';
 import { hashPassword, verifyPassword } from '../../lib/password';
 import { HttpError } from '../../lib/errors';
+
+// Bcrypt hash of an arbitrary fixed string, used only so login always pays
+// the cost of a bcrypt.compare — otherwise a nonexistent-email request
+// returns faster than a wrong-password one, leaking which emails exist via
+// response timing even though the error message is identical.
+const DUMMY_HASH = bcrypt.hashSync('fancall-timing-safety-dummy', 10);
 
 export interface PublicUser {
   id: string;
@@ -32,8 +39,10 @@ export async function login(email: string, password: string): Promise<PublicUser
     [email]
   );
   const user = rows[0];
-  // Same message either way so we don't reveal which emails exist.
-  if (!user || !(await verifyPassword(password, user.password_hash))) {
+  // Same message either way, and always run a compare (against a dummy hash
+  // when there's no user), so we don't reveal which emails exist via timing.
+  const passwordOk = await verifyPassword(password, user?.password_hash ?? DUMMY_HASH);
+  if (!user || !passwordOk) {
     throw new HttpError(401, 'Wrong email or password');
   }
   return { id: user.id, email: user.email, display_name: user.display_name };

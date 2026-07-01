@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { env } from './config/env';
 import { authRoutes } from './modules/auth/auth.routes';
 import { fixturesRoutes } from './modules/fixtures/fixtures.routes';
@@ -11,6 +12,7 @@ import { notFound, errorHandler } from './middleware/error';
 export function createApp() {
   const app = express();
 
+  app.use(helmet());
   // credentials: true is required for the session cookie to flow to the frontend.
   app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
   app.use(express.json());

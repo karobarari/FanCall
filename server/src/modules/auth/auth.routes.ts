@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../middleware/asyncHandler';
 import { requireAuth } from '../../middleware/auth';
+import { authRateLimit } from '../../middleware/rateLimit';
 import { setSession, clearSession } from '../../lib/session';
 import { HttpError } from '../../lib/errors';
 import * as authService from './auth.service';
@@ -16,6 +17,7 @@ const credentials = z.object({
 
 authRoutes.post(
   '/signup',
+  authRateLimit,
   asyncHandler(async (req, res) => {
     const parsed = credentials.safeParse(req.body);
     if (!parsed.success) {
@@ -33,6 +35,7 @@ authRoutes.post(
 
 authRoutes.post(
   '/login',
+  authRateLimit,
   asyncHandler(async (req, res) => {
     const parsed = credentials.pick({ email: true, password: true }).safeParse(req.body);
     if (!parsed.success) throw new HttpError(400, 'Invalid credentials');
