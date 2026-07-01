@@ -1,25 +1,33 @@
-import { useState } from "react";
-import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { apiGet } from "../lib/api";
 import OAuthButtons from "../components/OAuthButtons";
 
-const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  denied: "Sign-in was cancelled.",
-  session: "That sign-in link expired — please try again.",
-  conflict: "An account already exists with this email — log in with your password instead.",
-  failed: "Something went wrong signing you in. Please try again.",
-};
+interface Team {
+  id: string;
+  name: string;
+}
 
-export default function Login() {
+export default function Signup() {
   const navigate = useNavigate();
-  const { user, login } = useAuth();
-  const [searchParams] = useSearchParams();
+  const { user, signup } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(
-    () => OAUTH_ERROR_MESSAGES[searchParams.get("oauth_error") ?? ""] ?? null,
-  );
+  const [displayName, setDisplayName] = useState("");
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [teamId, setTeamId] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    apiGet<{ teams: Team[] }>("/teams")
+      .then(({ teams }) => {
+        setTeams(teams);
+        if (teams.length) setTeamId(teams[0].id);
+      })
+      .catch(() => setError("Couldn't load teams — refresh to try again."));
+  }, []);
 
   if (user) return <Navigate to="/app" replace />;
 
@@ -27,7 +35,7 @@ export default function Login() {
     setError(null);
     setBusy(true);
     try {
-      await login(email, password);
+      await signup(email, password, displayName, teamId);
       navigate("/app");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -46,6 +54,25 @@ export default function Login() {
       </p>
       <input
         className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border placeholder:text-[#73726c]"
+        placeholder="Username"
+        type="text"
+        autoComplete="username"
+        value={displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
+      />
+      <select
+        className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border"
+        value={teamId}
+        onChange={(e) => setTeamId(e.target.value)}
+      >
+        {teams.map((team) => (
+          <option key={team.id} value={team.id}>
+            {team.name}
+          </option>
+        ))}
+      </select>
+      <input
+        className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border placeholder:text-[#73726c]"
         placeholder="Email"
         type="email"
         autoComplete="email"
@@ -56,7 +83,7 @@ export default function Login() {
         className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border placeholder:text-[#73726c]"
         placeholder="Password"
         type="password"
-        autoComplete="current-password"
+        autoComplete="new-password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
@@ -70,13 +97,13 @@ export default function Login() {
         disabled={busy}
         onClick={submit}
       >
-        {busy ? "Signing in…" : "Sign in"}
+        {busy ? "Creating account…" : "Create account"}
       </button>
       <Link
-        to="/signup"
+        to="/login"
         className="bg-transparent border-0 text-[#73726c] text-sm p-3 cursor-pointer text-center no-underline"
       >
-        Create account
+        Already have an account? Sign in
       </Link>
 
       <OAuthButtons />

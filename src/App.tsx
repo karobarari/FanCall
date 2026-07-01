@@ -1,14 +1,28 @@
+import type { ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
 import { DataProvider } from "./data/store";
 import AppLayout from "./components/AppLayout";
 import Login from "./screens/Login";
+import Signup from "./screens/Signup";
 import CompleteSignup from "./screens/CompleteSignup";
 import MakeYourCall from "./screens/MakeYourCall";
 import Leaderboard from "./screens/Leaderboard";
 import Admin from "./screens/Admin";
 import "./playpage.css";
+
+// The centered white card every pre-auth screen (login/signup/complete
+// profile) sits inside.
+function AuthCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-screen bg-[#f4f4f2] flex justify-center">
+      <div className="w-full max-w-[440px] bg-white min-h-screen flex flex-col">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function Routed() {
   const { loading } = useAuth();
@@ -22,26 +36,30 @@ function Routed() {
   return (
     <Routes>
       <Route
-        path="/"
+        path="/login"
         element={
-          <div className="min-h-screen bg-[#f4f4f2] flex justify-center">
-            <div className="w-full max-w-[440px] bg-white min-h-screen flex flex-col">
-              <Login />
-            </div>
-          </div>
+          <AuthCard>
+            <Login />
+          </AuthCard>
         }
       />
-
+      <Route
+        path="/signup"
+        element={
+          <AuthCard>
+            <Signup />
+          </AuthCard>
+        }
+      />
       <Route
         path="/complete-signup"
         element={
-          <div className="min-h-screen bg-[#f4f4f2] flex justify-center">
-            <div className="w-full max-w-[440px] bg-white min-h-screen flex flex-col">
-              <CompleteSignup />
-            </div>
-          </div>
+          <AuthCard>
+            <CompleteSignup />
+          </AuthCard>
         }
       />
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
       <Route element={<RequireAuth />}>
         <Route path="/app" element={<AppLayout />}>
@@ -51,7 +69,7 @@ function Routed() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }

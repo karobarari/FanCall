@@ -30,7 +30,7 @@ const FLOW_COOKIE_OPTIONS = {
 type OAuthErrorReason = 'denied' | 'session' | 'conflict' | 'failed';
 
 function redirectWithError(res: Response, reason: OAuthErrorReason) {
-  res.redirect(`${env.CLIENT_ORIGIN}/?oauth_error=${reason}`);
+  res.redirect(`${env.CLIENT_ORIGIN}/login?oauth_error=${reason}`);
 }
 
 // Shared tail end of both providers' callbacks: an existing linked/matched

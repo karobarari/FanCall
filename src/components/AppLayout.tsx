@@ -12,7 +12,7 @@ function navClass({ isActive }: { isActive: boolean }) {
 }
 
 export default function AppLayout() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -95,13 +95,23 @@ export default function AppLayout() {
           </NavLink>
         </nav>
 
-        <button
-          className="mt-auto bg-transparent border border-white/10 text-muted rounded-[10px] p-2.5 text-[13px] cursor-pointer hover:border-white/20 hover:text-ink"
-          onClick={handleLogout}
-          disabled={signingOut}
-        >
-          {signingOut ? "Signing out…" : "Log out"}
-        </button>
+        <div className="mt-auto flex flex-col gap-2">
+          {user && (
+            <div className="px-1 leading-[1.3]">
+              <div className="font-medium text-sm text-ink">{user.display_name}</div>
+              <div className="text-[11px] text-faint uppercase tracking-[0.5px]">
+                {user.team_name}
+              </div>
+            </div>
+          )}
+          <button
+            className="bg-transparent border border-white/10 text-muted rounded-[10px] p-2.5 text-[13px] cursor-pointer hover:border-white/20 hover:text-ink"
+            onClick={handleLogout}
+            disabled={signingOut}
+          >
+            {signingOut ? "Signing out…" : "Log out"}
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
