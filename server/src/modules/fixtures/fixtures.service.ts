@@ -8,10 +8,11 @@ import { HttpError } from "../../lib/errors";
 const FIXTURE_COLUMNS = `id, season, gameweek, home_team, away_team, kickoff,
                          home_score, away_score, status`;
 
-// VERIFY: status a fixture holds *before* it's settled. Set this to your
-// column's pre-finished value (whatever schema.sql / the seed uses). If the
-// `status` column already has a DEFAULT, you can instead drop `status` from
-// the INSERT in createFixture and let the default apply.
+// Pre-finished status. 'upcoming' is the confirmed canonical value across the
+// system: fixtures-play.sql seeds it, and predictions.service.ts only accepts a
+// prediction while status === 'upcoming'. schema.sql's column DEFAULT is aligned
+// to 'upcoming' to match (it previously read 'scheduled', which would have made
+// any default-status fixture silently reject all predictions).
 const NEW_FIXTURE_STATUS = "upcoming";
 function isUniqueViolation(err: unknown): boolean {
   return (
@@ -89,8 +90,9 @@ export type FixtureInput = {
 // set at creation. Inserting a row is all it takes: it immediately surfaces in
 // predictions, scoring and the leaderboard (fixture-driven architecture).
 //
-// VERIFY: if home_team / away_team are foreign keys (or must match teams.name),
-// validate them against the teams table here before inserting.
+// Note: home_team / away_team are free text (schema.sql does not FK them to
+// teams). Fine for the skeleton -- an admin enters known club names. If you want
+// data integrity later, FK them to teams(name) or validate here before insert.
 export async function createFixture(input: FixtureInput) {
   try {
     const { rows } = await pool.query(

@@ -40,7 +40,6 @@ export async function upsertPrediction(
      returning fixture_id, home_pred, away_pred, result_pred, updated_at`,
     [userId, fixtureId, home, away, resultPred],
   );
-  console.log("Upserted prediction:", rows[0]);
 
   return rows[0];
 }
