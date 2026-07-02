@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({ quiet: true });
 import { z } from "zod";
 
 // Validate the environment once, at startup, so a misconfig fails loudly
@@ -44,3 +44,4 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 export const isProd = env.NODE_ENV === "production";
+export const isTest = env.NODE_ENV === "test";
