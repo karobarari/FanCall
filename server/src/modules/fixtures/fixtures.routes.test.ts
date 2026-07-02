@@ -1,25 +1,23 @@
 import { describe, it, expect, beforeEach, afterAll } from '@jest/globals';
 import request from 'supertest';
-import { app, pool, resetDb, getAnyTeamId, agent } from '../../testUtils';
+import { app, pool, resetDb, agent } from '../../testUtils';
 
-async function adminAgent(teamId: string) {
+async function adminAgent() {
   const client = agent();
   await client.post('/api/auth/signup').send({
     email: 'admin@test.dev',
     password: 'correct-horse',
     displayName: 'admin_1',
-    team_id: teamId,
   });
   return client;
 }
 
-async function playerAgent(teamId: string) {
+async function playerAgent() {
   const client = agent();
   await client.post('/api/auth/signup').send({
     email: 'player@test.dev',
     password: 'correct-horse',
     displayName: 'player_1',
-    team_id: teamId,
   });
   return client;
 }
@@ -29,11 +27,8 @@ function futureIso(hoursFromNow: number): string {
 }
 
 describe('fixtures routes (live integration)', () => {
-  let teamId: string;
-
   beforeEach(async () => {
     await resetDb();
-    teamId = await getAnyTeamId();
   });
 
   afterAll(async () => {
@@ -48,7 +43,7 @@ describe('fixtures routes (live integration)', () => {
     });
 
     it('filters by season and gameweek', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       await admin.post('/api/fixtures').send({
         season: '2025/26',
         gameweek: 1,
@@ -85,13 +80,13 @@ describe('fixtures routes (live integration)', () => {
     });
 
     it('rejects a non-admin user', async () => {
-      const player = await playerAgent(teamId);
+      const player = await playerAgent();
       const res = await player.post('/api/fixtures').send(draft);
       expect(res.status).toBe(403);
     });
 
     it('creates a fixture as admin', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       const res = await admin.post('/api/fixtures').send(draft);
       expect(res.status).toBe(201);
       expect(res.body.fixture).toMatchObject({
@@ -104,7 +99,7 @@ describe('fixtures routes (live integration)', () => {
     });
 
     it('rejects identical home and away teams', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       const res = await admin
         .post('/api/fixtures')
         .send({ ...draft, away_team: 'Arsenal' });
@@ -112,7 +107,7 @@ describe('fixtures routes (live integration)', () => {
     });
 
     it('rejects a duplicate fixture identity with 409', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       await admin.post('/api/fixtures').send(draft);
       const res = await admin.post('/api/fixtures').send(draft);
       expect(res.status).toBe(409);
@@ -132,15 +127,15 @@ describe('fixtures routes (live integration)', () => {
     }
 
     it('rejects a non-admin user', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       const id = await createDraftFixture(admin);
-      const player = await playerAgent(teamId);
+      const player = await playerAgent();
       const res = await player.patch(`/api/fixtures/${id}`).send({ gameweek: 2 });
       expect(res.status).toBe(403);
     });
 
     it('updates fixture metadata as admin', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       const id = await createDraftFixture(admin);
       const res = await admin.patch(`/api/fixtures/${id}`).send({ gameweek: 5 });
       expect(res.status).toBe(200);
@@ -148,7 +143,7 @@ describe('fixtures routes (live integration)', () => {
     });
 
     it('refuses to edit a finished fixture', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       const id = await createDraftFixture(admin);
       await admin.post(`/api/fixtures/${id}/settle`).send({ home_score: 2, away_score: 1 });
 
@@ -159,7 +154,7 @@ describe('fixtures routes (live integration)', () => {
 
   describe('POST /api/fixtures/:id/settle (admin-only)', () => {
     it('rejects a non-admin user', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       const created = await admin.post('/api/fixtures').send({
         season: '2025/26',
         gameweek: 1,
@@ -167,7 +162,7 @@ describe('fixtures routes (live integration)', () => {
         away_team: 'Chelsea',
         kickoff: futureIso(24),
       });
-      const player = await playerAgent(teamId);
+      const player = await playerAgent();
       const res = await player
         .post(`/api/fixtures/${created.body.fixture.id}/settle`)
         .send({ home_score: 2, away_score: 1 });
@@ -175,7 +170,7 @@ describe('fixtures routes (live integration)', () => {
     });
 
     it('404s for an unknown fixture id', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       const res = await admin
         .post('/api/fixtures/00000000-0000-0000-0000-000000000000/settle')
         .send({ home_score: 2, away_score: 1 });
@@ -183,7 +178,7 @@ describe('fixtures routes (live integration)', () => {
     });
 
     it('settles a fixture, flipping it to finished with the recorded score', async () => {
-      const admin = await adminAgent(teamId);
+      const admin = await adminAgent();
       const created = await admin.post('/api/fixtures').send({
         season: '2025/26',
         gameweek: 1,

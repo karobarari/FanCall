@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from '@jest/globals';
 import request from 'supertest';
-import { app, pool, resetDb, getAnyTeamId, agent } from '../../testUtils';
+import { app, pool, resetDb, agent } from '../../testUtils';
 
 function futureIso(hoursFromNow: number): string {
   return new Date(Date.now() + hoursFromNow * 60 * 60 * 1000).toISOString();
@@ -21,25 +21,26 @@ async function createFixture(
 }
 
 describe('predictions routes (live integration)', () => {
-  let teamId: string;
-
   beforeEach(async () => {
     await resetDb();
-    teamId = await getAnyTeamId();
   });
 
   afterAll(async () => {
     await pool.end();
   });
 
+  // Predictions require paid = true (see middleware/auth.ts's requirePaid).
+  // These tests are about prediction behavior, not the payment flow itself
+  // (that's payment.routes.test.ts), so mark paid directly via SQL instead
+  // of round-tripping through POST /api/payment/pay every time.
   async function newUser(email: string, displayName: string) {
     const client = agent();
     await client.post('/api/auth/signup').send({
       email,
       password: 'correct-horse',
       displayName,
-      team_id: teamId,
     });
+    await pool.query('update users set paid = true where email = $1', [email]);
     return client;
   }
 
@@ -47,6 +48,17 @@ describe('predictions routes (live integration)', () => {
     it('rejects an unauthenticated request', async () => {
       const res = await request(app).get('/api/predictions');
       expect(res.status).toBe(401);
+    });
+
+    it('rejects an unpaid user with 402', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'unpaid@test.dev',
+        password: 'correct-horse',
+        displayName: 'unpaid_1',
+      });
+      const res = await client.get('/api/predictions');
+      expect(res.status).toBe(402);
     });
 
     it('only returns the signed-in user\'s own predictions', async () => {
@@ -79,6 +91,22 @@ describe('predictions routes (live integration)', () => {
         result_pred: 'draw',
       });
       expect(res.status).toBe(401);
+    });
+
+    it('rejects an unpaid user with 402, even calling the API directly', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'unpaid@test.dev',
+        password: 'correct-horse',
+        displayName: 'unpaid_1',
+      });
+      const res = await client.post('/api/predictions').send({
+        fixture_id: '00000000-0000-0000-0000-000000000000',
+        home_pred: 1,
+        away_pred: 1,
+        result_pred: 'draw',
+      });
+      expect(res.status).toBe(402);
     });
 
     it('rejects an invalid body', async () => {

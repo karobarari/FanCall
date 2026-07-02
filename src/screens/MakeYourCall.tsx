@@ -477,12 +477,13 @@ export function ScoringGuide() {
         ))}
       </div>
 
-      {/* Maximum box */}
+      {/* Maximum box — Man City's actual badge gold (#FFC659), since this is
+          the one celebratory/bonus highlight on the page. */}
       <div
         style={{
           marginTop: "16px",
           padding: "16px",
-          border: "2px solid rgba(217,119,6,0.4)",
+          border: "2px solid rgba(255,198,89,0.4)",
           borderRadius: "12px",
           textAlign: "center",
           background: "rgba(55,48,44,0.5)",
@@ -504,7 +505,7 @@ export function ScoringGuide() {
           style={{
             fontSize: "32px",
             fontWeight: 700,
-            color: "#fbbf24",
+            color: "#ffc659",
             marginBottom: "6px",
           }}
         >
@@ -596,8 +597,8 @@ export default function MakeYourCall() {
     <div>
       <header className="flex items-center justify-between gap-6 mb-[26px] flex-wrap">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-[13px] bg-white text-navy font-extrabold flex items-center justify-center text-[17px]">
-            FC
+          <div className="w-14 h-14 rounded-full ring-2 ring-city-gold bg-white text-navy font-extrabold flex items-center justify-center text-[17px]">
+            MC
           </div>
           <div>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.6px] text-ink">

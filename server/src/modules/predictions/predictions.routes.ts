@@ -1,14 +1,17 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../middleware/asyncHandler";
-import { requireAuth } from "../../middleware/auth";
+import { requireAuth, requirePaid } from "../../middleware/auth";
 import { HttpError } from "../../lib/errors";
 import { listPredictions, upsertPrediction } from "./predictions.service";
 
 export const predictionsRoutes = Router();
 
-// Everything here needs a signed-in user.
+// Everything here needs a signed-in, paid user — this is the product the
+// demo payment step gates. Checked server-side (not just a frontend
+// redirect) so it can't be bypassed by calling the API directly.
 predictionsRoutes.use(requireAuth);
+predictionsRoutes.use(asyncHandler(requirePaid));
 
 predictionsRoutes.get(
   "/",

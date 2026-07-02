@@ -2,6 +2,8 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../../db/pool';
 import { hashPassword, verifyPassword } from '../../lib/password';
 import { HttpError, isUniqueViolation } from '../../lib/errors';
+import { isAdminEmail } from '../../lib/adminEmail';
+import { getPilotTeam } from '../teams/teams.service';
 
 // Bcrypt hash of an arbitrary fixed string, used only so login always pays
 // the cost of a bcrypt.compare — otherwise a nonexistent-email request
@@ -15,29 +17,28 @@ export interface PublicUser {
   display_name: string | null;
   team_id: string;
   team_name: string;
+  paid: boolean;
 }
 
-export async function signup(
-  email: string,
-  password: string,
-  displayName: string,
-  teamId: string
-): Promise<PublicUser> {
+export async function signup(email: string, password: string, displayName: string): Promise<PublicUser> {
   const existing = await pool.query('select 1 from users where email = $1', [email]);
   if (existing.rowCount) throw new HttpError(409, 'That email is already registered');
 
-  const team = await pool.query<{ name: string }>('select name from teams where id = $1', [teamId]);
-  if (!team.rowCount) throw new HttpError(400, 'Unknown team');
+  const team = await getPilotTeam();
+  // The admin account never needs to click through the demo payment screen
+  // to test settle/predict — everyone else starts unpaid, same as any real
+  // signup would.
+  const paid = isAdminEmail(email);
 
   const hash = await hashPassword(password);
   try {
     const { rows } = await pool.query<{ id: string; email: string; display_name: string | null }>(
-      `insert into users (email, password_hash, display_name, team_id)
-       values ($1, $2, $3, $4)
+      `insert into users (email, password_hash, display_name, team_id, paid)
+       values ($1, $2, $3, $4, $5)
        returning id, email, display_name`,
-      [email, hash, displayName, teamId]
+      [email, hash, displayName, team.id, paid]
     );
-    return { ...rows[0], team_id: teamId, team_name: team.rows[0].name };
+    return { ...rows[0], team_id: team.id, team_name: team.name, paid };
   } catch (err) {
     if (isUniqueViolation(err)) throw new HttpError(409, 'That username is already taken');
     throw err;
@@ -52,8 +53,9 @@ export async function login(email: string, password: string): Promise<PublicUser
     password_hash: string | null;
     team_id: string;
     team_name: string;
+    paid: boolean;
   }>(
-    `select u.id, u.email, u.display_name, u.password_hash, u.team_id, t.name as team_name
+    `select u.id, u.email, u.display_name, u.password_hash, u.team_id, t.name as team_name, u.paid
        from users u
        join teams t on t.id = u.team_id
       where u.email = $1`,
@@ -72,12 +74,13 @@ export async function login(email: string, password: string): Promise<PublicUser
     display_name: user.display_name,
     team_id: user.team_id,
     team_name: user.team_name,
+    paid: user.paid,
   };
 }
 
 export async function getUser(id: string): Promise<PublicUser> {
   const { rows } = await pool.query<PublicUser>(
-    `select u.id, u.email, u.display_name, u.team_id, t.name as team_name
+    `select u.id, u.email, u.display_name, u.team_id, t.name as team_name, u.paid
        from users u
        join teams t on t.id = u.team_id
       where u.id = $1`,

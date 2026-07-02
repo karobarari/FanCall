@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from '@jest/globals';
 import request from 'supertest';
-import { app, pool, resetDb, getAnyTeamId, agent } from '../../testUtils';
+import { app, pool, resetDb, agent } from '../../testUtils';
 
 function futureIso(hoursFromNow: number): string {
   return new Date(Date.now() + hoursFromNow * 60 * 60 * 1000).toISOString();
@@ -14,25 +14,25 @@ interface LeaderboardEntry {
 }
 
 describe('GET /api/leaderboard (live integration)', () => {
-  let teamId: string;
-
   beforeEach(async () => {
     await resetDb();
-    teamId = await getAnyTeamId();
   });
 
   afterAll(async () => {
     await pool.end();
   });
 
+  // Predictions require paid = true; mark every test user paid directly via
+  // SQL rather than round-tripping through the payment endpoint, since these
+  // tests are about leaderboard math, not the payment flow.
   async function newUser(email: string, displayName: string) {
     const client = agent();
     await client.post('/api/auth/signup').send({
       email,
       password: 'correct-horse',
       displayName,
-      team_id: teamId,
     });
+    await pool.query('update users set paid = true where email = $1', [email]);
     return client;
   }
 

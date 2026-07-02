@@ -38,8 +38,8 @@ export default function Login() {
 
   return (
     <div className="flex-1 flex flex-col justify-center p-4 gap-3">
-      <div className="w-[72px] h-[72px] border border-dashed border-[#e4e3de] rounded-xl flex items-center justify-center text-[#73726c] text-[13px] mx-auto">
-        logo
+      <div className="w-[72px] h-[72px] rounded-full ring-2 ring-city-gold bg-gradient-to-br from-[#6cabdd] to-[#1c2c5b] flex items-center justify-center text-white font-extrabold text-xl tracking-[-0.5px] mx-auto">
+        MC
       </div>
       <p className="text-center text-[#73726c] text-[15px] mt-2 mb-4">
         FanCall

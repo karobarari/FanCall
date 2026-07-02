@@ -90,7 +90,10 @@ CREATE TABLE public.users (
     team_id uuid NOT NULL,
     google_id text,
     apple_id text,
-    email_verified boolean DEFAULT false NOT NULL
+    email_verified boolean DEFAULT false NOT NULL,
+    -- Demo-only payment flag (no real processor until roadmap step 18).
+    -- Flipped by POST /api/payment/pay; enforced server-side by requirePaid.
+    paid boolean DEFAULT false NOT NULL
 );
 
 ALTER TABLE ONLY public.users

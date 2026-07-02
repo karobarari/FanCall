@@ -9,6 +9,7 @@ import { fixturesRoutes } from './modules/fixtures/fixtures.routes';
 import { predictionsRoutes } from './modules/predictions/predictions.routes';
 import { leaderboardRoutes } from './modules/leaderboard/leaderboard.routes';
 import { teamsRoutes } from './modules/teams/teams.routes';
+import { paymentRoutes } from './modules/payment/payment.routes';
 import { notFound, errorHandler } from './middleware/error';
 
 export function createApp() {
@@ -47,6 +48,7 @@ export function createApp() {
   app.use('/api/predictions', predictionsRoutes);
   app.use('/api/leaderboard', leaderboardRoutes);
   app.use('/api/teams', teamsRoutes);
+  app.use('/api/payment', paymentRoutes);
 
   app.use(notFound);
   app.use(errorHandler);

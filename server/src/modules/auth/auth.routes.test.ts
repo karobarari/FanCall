@@ -1,13 +1,11 @@
 import { describe, it, expect, beforeEach, afterAll } from '@jest/globals';
-import { app, pool, resetDb, getAnyTeamId, agent } from '../../testUtils';
+import { app, pool, resetDb, agent } from '../../testUtils';
+import { PILOT_TEAM_NAME } from '../../config/pilotTeam';
 import request from 'supertest';
 
 describe('auth routes (live integration)', () => {
-  let teamId: string;
-
   beforeEach(async () => {
     await resetDb();
-    teamId = await getAnyTeamId();
   });
 
   afterAll(async () => {
@@ -15,22 +13,31 @@ describe('auth routes (live integration)', () => {
   });
 
   describe('POST /api/auth/signup', () => {
-    it('creates an account and returns the user with their team', async () => {
+    it('creates an account, auto-assigned to the pilot team', async () => {
       const res = await request(app).post('/api/auth/signup').send({
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
-        team_id: teamId,
       });
 
       expect(res.status).toBe(201);
       expect(res.body.user).toMatchObject({
         email: 'alice@test.dev',
         display_name: 'alice_1',
-        team_id: teamId,
+        team_name: PILOT_TEAM_NAME,
+        paid: false,
       });
-      expect(typeof res.body.user.team_name).toBe('string');
+      expect(typeof res.body.user.team_id).toBe('string');
       expect(res.headers['set-cookie']).toBeDefined();
+    });
+
+    it('auto-marks the admin account as paid (jest.setup.ts pins ADMIN_EMAIL to admin@test.dev)', async () => {
+      const res = await request(app).post('/api/auth/signup').send({
+        email: 'admin@test.dev',
+        password: 'correct-horse',
+        displayName: 'admin_1',
+      });
+      expect(res.body.user.paid).toBe(true);
     });
 
     it('rejects an invalid email', async () => {
@@ -38,7 +45,6 @@ describe('auth routes (live integration)', () => {
         email: 'not-an-email',
         password: 'correct-horse',
         displayName: 'alice_1',
-        team_id: teamId,
       });
       expect(res.status).toBe(400);
     });
@@ -48,7 +54,6 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'short',
         displayName: 'alice_1',
-        team_id: teamId,
       });
       expect(res.status).toBe(400);
     });
@@ -60,45 +65,22 @@ describe('auth routes (live integration)', () => {
           email: 'alice@test.dev',
           password: 'correct-horse',
           displayName,
-          team_id: teamId,
         });
         expect(res.status).toBe(400);
         expect(res.body.error).toMatch(/username/i);
       },
     );
 
-    it('rejects a missing team_id', async () => {
-      const res = await request(app).post('/api/auth/signup').send({
-        email: 'alice@test.dev',
-        password: 'correct-horse',
-        displayName: 'alice_1',
-      });
-      expect(res.status).toBe(400);
-    });
-
-    it('rejects an unknown team_id', async () => {
-      const res = await request(app).post('/api/auth/signup').send({
-        email: 'alice@test.dev',
-        password: 'correct-horse',
-        displayName: 'alice_1',
-        team_id: '00000000-0000-0000-0000-000000000000',
-      });
-      expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/team/i);
-    });
-
     it('rejects a duplicate email with 409', async () => {
       await request(app).post('/api/auth/signup').send({
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
-        team_id: teamId,
       });
       const res = await request(app).post('/api/auth/signup').send({
         email: 'alice@test.dev',
         password: 'another-pass',
         displayName: 'alice_2',
-        team_id: teamId,
       });
       expect(res.status).toBe(409);
     });
@@ -108,13 +90,11 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
-        team_id: teamId,
       });
       const res = await request(app).post('/api/auth/signup').send({
         email: 'someoneelse@test.dev',
         password: 'another-pass',
         displayName: 'ALICE_1',
-        team_id: teamId,
       });
       expect(res.status).toBe(409);
     });
@@ -126,7 +106,6 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
-        team_id: teamId,
       });
     });
 
@@ -136,7 +115,7 @@ describe('auth routes (live integration)', () => {
         .send({ email: 'alice@test.dev', password: 'correct-horse' });
       expect(res.status).toBe(200);
       expect(res.body.user.email).toBe('alice@test.dev');
-      expect(res.body.user.team_name).toBeTruthy();
+      expect(res.body.user.team_name).toBe(PILOT_TEAM_NAME);
     });
 
     it('rejects the wrong password with the same message as an unknown email', async () => {
@@ -165,7 +144,6 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
-        team_id: teamId,
       });
 
       const me = await client.get('/api/auth/me');

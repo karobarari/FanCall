@@ -1,17 +1,16 @@
 -- FanCall — seed data
--- Arsenal, season 2025/26, Premier League gameweeks 1-5 (real fixtures).
--- Source: Arsenal.com / premierleague.com fixture release.
---
--- Opponents, venues and dates are accurate. Kickoff times for GW1-2 are the
--- confirmed broadcast slots; GW3-5 times are best-known and can still shift with
--- TV selections, so verify nearer the date. Times are BST (UTC+1).
+-- Manchester City (the pilot club — see server/src/config/pilotTeam.ts and
+-- VITE_CLUB), season 2026/27, gameweeks 1-5. Opponents/dates are plausible
+-- placeholders, not sourced from a real fixture release — same as the rest
+-- of this project's 20-club seed list (see db/seed-teams.sql), which mixes
+-- clubs that have never shared a real top-flight season together.
 
 insert into fixtures (season, gameweek, home_team, away_team, kickoff) values
-  ('2025/26', 1, 'Manchester United', 'Arsenal',           '2025-08-17 16:30+01'),
-  ('2025/26', 2, 'Arsenal',           'Leeds United',      '2025-08-23 17:30+01'),
-  ('2025/26', 3, 'Liverpool',         'Arsenal',           '2025-08-30 16:30+01'),
-  ('2025/26', 4, 'Arsenal',           'Nottingham Forest', '2025-09-13 15:00+01'),
-  ('2025/26', 5, 'Arsenal',           'Manchester City',   '2025-09-20 16:30+01');
+  ('2026/27', 1, 'Manchester City',   'Aston Villa',        '2026-08-16 15:00+01'),
+  ('2026/27', 2, 'Newcastle United',  'Manchester City',    '2026-08-23 12:30+01'),
+  ('2026/27', 3, 'Manchester City',   'Tottenham Hotspur',  '2026-08-30 15:00+01'),
+  ('2026/27', 4, 'Everton',           'Manchester City',    '2026-09-13 15:00+01'),
+  ('2026/27', 5, 'Manchester City',   'Liverpool',          '2026-09-20 17:30+01');
 
 -- To test scoring end to end once you have a user and a prediction:
 --   select settle_fixture('<fixture_id>', 2, 1);

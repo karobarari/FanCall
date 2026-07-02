@@ -7,6 +7,7 @@ import AppLayout from "./components/AppLayout";
 import Login from "./screens/Login";
 import Signup from "./screens/Signup";
 import CompleteSignup from "./screens/CompleteSignup";
+import Payment from "./screens/Payment";
 import MakeYourCall from "./screens/MakeYourCall";
 import Leaderboard from "./screens/Leaderboard";
 import Admin from "./screens/Admin";
@@ -56,6 +57,14 @@ function Routed() {
         element={
           <AuthCard>
             <CompleteSignup />
+          </AuthCard>
+        }
+      />
+      <Route
+        path="/payment"
+        element={
+          <AuthCard>
+            <Payment />
           </AuthCard>
         }
       />

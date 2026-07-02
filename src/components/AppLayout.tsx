@@ -57,8 +57,8 @@ export default function AppLayout() {
         `}
       >
         <div className="flex items-center gap-3 pt-14">
-          <div className="w-[42px] h-[42px] rounded-[11px] bg-gradient-to-br from-gold to-[#b9802a] text-[#1a1205] font-extrabold text-[15px] flex items-center justify-center tracking-[-0.5px]">
-            FC
+          <div className="w-[42px] h-[42px] rounded-full ring-2 ring-city-gold bg-gradient-to-br from-gold to-[#1c2c5b] text-[#0a1729] font-extrabold text-[15px] flex items-center justify-center tracking-[-0.5px]">
+            MC
           </div>
 
           <div className="flex flex-col leading-[1.2]">
@@ -67,7 +67,7 @@ export default function AppLayout() {
             </span>
 
             <span className="text-[10px] text-faint uppercase tracking-[1px]">
-              Sports Prediction Game
+              Manchester City Predictions
             </span>
           </div>
         </div>

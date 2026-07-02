@@ -15,13 +15,14 @@ export interface User {
   display_name: string | null;
   team_id: string;
   team_name: string;
+  paid: boolean;
 }
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean; // true while the initial session check is in flight
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, displayName: string, teamId: string) => Promise<void>;
+  signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   // Re-checks who's signed in against the session cookie. Used after a flow
   // that sets the cookie outside AuthContext's own login/signup calls — e.g.
@@ -59,18 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   }, []);
 
-  const signup = useCallback(
-    async (email: string, password: string, displayName: string, teamId: string) => {
-      const { user } = await apiPost<{ user: User }>('/auth/signup', {
-        email,
-        password,
-        displayName,
-        team_id: teamId,
-      });
-      setUser(user);
-    },
-    []
-  );
+  const signup = useCallback(async (email: string, password: string, displayName: string) => {
+    const { user } = await apiPost<{ user: User }>('/auth/signup', { email, password, displayName });
+    setUser(user);
+  }, []);
 
   const logout = useCallback(async () => {
     await apiPost<unknown>('/auth/logout', {});

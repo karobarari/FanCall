@@ -11,8 +11,8 @@ export default function Leaderboard() {
     <div>
       <header className="flex items-center justify-between gap-6 mb-[26px] flex-wrap">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-[13px] bg-white text-navy font-extrabold flex items-center justify-center text-[17px]">
-            FC
+          <div className="w-14 h-14 rounded-full ring-2 ring-city-gold bg-white text-navy font-extrabold flex items-center justify-center text-[17px]">
+            MC
           </div>
           <div>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.6px] text-ink">

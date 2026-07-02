@@ -64,15 +64,15 @@ export default function Admin() {
       {/* Header */}
       <header className="flex items-center justify-between gap-6 mb-6 flex-wrap">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-[13px] bg-white text-navy font-extrabold flex items-center justify-center text-[17px]">
-            FC
+          <div className="w-14 h-14 rounded-full ring-2 ring-city-gold bg-white text-navy font-extrabold flex items-center justify-center text-[17px]">
+            MC
           </div>
           <div>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.6px] text-ink">
               Admin Dashboard
             </h1>
             <p className="mt-1 text-faint text-sm">
-              Manage fixtures, track players and revenue
+              Manage Manchester City fixtures, track players and revenue
             </p>
           </div>
         </div>

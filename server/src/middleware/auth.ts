@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { pool } from "../db/pool";
 import { env } from "../config/env";
 import { HttpError } from "../lib/errors";
+import { isAdminEmail } from "../lib/adminEmail";
 import { SESSION_COOKIE } from "../lib/session";
 import { verifyToken } from "../lib/jwt";
 
@@ -36,8 +37,29 @@ export async function requireAdmin(
     req.userId,
   ]);
   const email: string | undefined = rows[0]?.email;
-  if (!email || email.toLowerCase() !== env.ADMIN_EMAIL.toLowerCase()) {
+  if (!email || !isAdminEmail(email)) {
     throw new HttpError(403, "Admin access required");
+  }
+  next();
+}
+
+// Gates the paid product (predictions) behind the demo payment step. No
+// real payment processing yet (roadmap step 18) — payment.service.ts just
+// flips users.paid; this middleware is what actually enforces it server-side
+// so the gate can't be skipped by calling the API directly. The admin
+// account is auto-marked paid at signup (see auth.service.ts / oauth.service.ts),
+// so this never blocks admin testing.
+export async function requirePaid(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  const { rows } = await pool.query<{ paid: boolean }>(
+    "select paid from users where id = $1",
+    [req.userId],
+  );
+  if (!rows[0]?.paid) {
+    throw new HttpError(402, "Payment required");
   }
   next();
 }

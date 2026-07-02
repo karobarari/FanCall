@@ -1,13 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiGet } from "../lib/api";
 import OAuthButtons from "../components/OAuthButtons";
-
-interface Team {
-  id: string;
-  name: string;
-}
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -15,19 +9,8 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [teamId, setTeamId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    apiGet<{ teams: Team[] }>("/teams")
-      .then(({ teams }) => {
-        setTeams(teams);
-        if (teams.length) setTeamId(teams[0].id);
-      })
-      .catch(() => setError("Couldn't load teams — refresh to try again."));
-  }, []);
 
   if (user) return <Navigate to="/app" replace />;
 
@@ -35,7 +18,7 @@ export default function Signup() {
     setError(null);
     setBusy(true);
     try {
-      await signup(email, password, displayName, teamId);
+      await signup(email, password, displayName);
       navigate("/app");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -46,8 +29,8 @@ export default function Signup() {
 
   return (
     <div className="flex-1 flex flex-col justify-center p-4 gap-3">
-      <div className="w-[72px] h-[72px] border border-dashed border-[#e4e3de] rounded-xl flex items-center justify-center text-[#73726c] text-[13px] mx-auto">
-        logo
+      <div className="w-[72px] h-[72px] rounded-full ring-2 ring-city-gold bg-gradient-to-br from-[#6cabdd] to-[#1c2c5b] flex items-center justify-center text-white font-extrabold text-xl tracking-[-0.5px] mx-auto">
+        MC
       </div>
       <p className="text-center text-[#73726c] text-[15px] mt-2 mb-4">
         FanCall
@@ -60,17 +43,6 @@ export default function Signup() {
         value={displayName}
         onChange={(e) => setDisplayName(e.target.value)}
       />
-      <select
-        className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border"
-        value={teamId}
-        onChange={(e) => setTeamId(e.target.value)}
-      >
-        {teams.map((team) => (
-          <option key={team.id} value={team.id}>
-            {team.name}
-          </option>
-        ))}
-      </select>
       <input
         className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border placeholder:text-[#73726c]"
         placeholder="Email"

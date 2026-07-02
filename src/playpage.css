@@ -1,14 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  --color-navy:      #0a1729;
-  --color-navy-deep: #081320;
-  --color-panel:     #0f2238;
-  --color-panel-2:   #122a47;
+  /* Navy/panel tones tinted toward Man City's actual navy (#1c2c5b) rather
+     than a generic near-black dark-UI navy — still dark enough for text
+     contrast, but the hue now reads as "City navy" instead of neutral. */
+  --color-navy:      #0d1b36;
+  --color-navy-deep: #081226;
+  --color-panel:     #102544;
+  --color-panel-2:   #13294c;
   --color-ink:       #e8eef7;
   --color-muted:     #90a6c4;
   --color-faint:     #61789a;
-  --color-gold:      #e3a93f;
+  /* Man City pilot: this token drives every active/highlight/primary-accent
+     state in the app (nav, buttons, stat cards). Kept the name "gold" rather
+     than renaming ~50 call sites across the codebase for a single-club demo
+     — if/when step 22 (per-club branding) makes this configurable per
+     tenant, that's the natural point to rename it to something club-neutral
+     like --color-accent. */
+  --color-gold:      #6cabdd;
+  /* City's actual badge/centenary gold (#FFC659) — used sparingly for the
+     crest-badge ring and the "maximum per fixture" bonus highlight, kept
+     distinct from --color-gold (which is really City sky blue). */
+  --color-city-gold: #ffc659;
   --color-green:     #46c46a;
   --color-flag:      #e0604f;
   --radius-card:     14px;
