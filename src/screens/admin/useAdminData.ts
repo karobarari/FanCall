@@ -2,12 +2,19 @@ import { useState, useEffect, useCallback } from "react";
 import { API } from "./config";
 import type { Fixture, FixtureDraft, LeaderboardEntry, Load } from "./types";
 import { isObj, pickLeaderboard, pickTeams, readError } from "./utils";
+import { useFixtures as useSharedFixtures } from "../../data/store";
 /* ==================================================================
    All admin data: fixtures + leaderboard + teams, plus the mutations
    (settle / create / update) that the Fixtures tab drives. Components
    stay presentational; this is the single seam to the API.
 ==================================================================== */
 export function useAdminData() {
+  // The player-facing screens (Make Your Call, Leaderboard) read from the
+  // app-wide DataProvider, not this hook's own state. Without also poking
+  // its refresh(), an admin settling a fixture wouldn't see it reflected
+  // there until a full reload.
+  const { refresh: refreshSharedData } = useSharedFixtures();
+
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [fxState, setFxState] = useState<Load>("loading");
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -79,10 +86,11 @@ export function useAdminData() {
         body: JSON.stringify({ home_score: homeScore, away_score: awayScore }),
       });
       if (!res.ok) throw new Error(await readError(res, "Settle failed"));
-      // Settling changes scores, so refresh both fixtures and standings.
-      await Promise.all([loadFixtures(), loadLeaderboard()]);
+      // Settling changes scores, so refresh both fixtures and standings —
+      // this tab's own view, and the shared store the player screens read.
+      await Promise.all([loadFixtures(), loadLeaderboard(), refreshSharedData()]);
     },
-    [loadFixtures, loadLeaderboard],
+    [loadFixtures, loadLeaderboard, refreshSharedData],
   );
 
   const createFixture = useCallback(
@@ -94,9 +102,9 @@ export function useAdminData() {
         body: JSON.stringify(draft),
       });
       if (!res.ok) throw new Error(await readError(res, "Couldn't add fixture"));
-      await loadFixtures();
+      await Promise.all([loadFixtures(), refreshSharedData()]);
     },
-    [loadFixtures],
+    [loadFixtures, refreshSharedData],
   );
 
   const updateFixture = useCallback(
@@ -108,10 +116,11 @@ export function useAdminData() {
         body: JSON.stringify(draft),
       });
       if (!res.ok) throw new Error(await readError(res, "Couldn't update fixture"));
-      // Metadata edit doesn't touch scores, so only fixtures need refreshing.
-      await loadFixtures();
+      // Metadata edit doesn't touch scores, but the fixture list itself
+      // (teams/date/gameweek) is also shown on the player screens.
+      await Promise.all([loadFixtures(), refreshSharedData()]);
     },
-    [loadFixtures],
+    [loadFixtures, refreshSharedData],
   );
   return {
     fixtures,
