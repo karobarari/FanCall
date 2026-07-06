@@ -142,6 +142,23 @@ describe('fixtures routes (live integration)', () => {
       expect(res.body.fixture.gameweek).toBe(5);
     });
 
+    it('defaults to unlocked, and can be locked and unlocked independently of other fields', async () => {
+      const admin = await adminAgent();
+      const id = await createDraftFixture(admin);
+
+      const created = await admin.get('/api/fixtures');
+      const fixture = created.body.fixtures.find((f: { id: string }) => f.id === id);
+      expect(fixture.locked).toBe(false);
+
+      const locked = await admin.patch(`/api/fixtures/${id}`).send({ locked: true });
+      expect(locked.status).toBe(200);
+      expect(locked.body.fixture.locked).toBe(true);
+
+      const unlocked = await admin.patch(`/api/fixtures/${id}`).send({ locked: false });
+      expect(unlocked.status).toBe(200);
+      expect(unlocked.body.fixture.locked).toBe(false);
+    });
+
     it('refuses to edit a finished fixture', async () => {
       const admin = await adminAgent();
       const id = await createDraftFixture(admin);

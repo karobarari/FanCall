@@ -55,7 +55,7 @@ const SCORING_RULES: GuideRow[] = [
   },
 ];
 function isOpen(f: Fixture): boolean {
-  return f.status === 'upcoming' && new Date(f.kickoff).getTime() > Date.now();
+  return f.status === 'upcoming' && !f.locked && new Date(f.kickoff).getTime() > Date.now();
 }
 
 function kickoffLabel(iso: string): string {

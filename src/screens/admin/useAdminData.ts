@@ -122,6 +122,23 @@ export function useAdminData() {
     },
     [loadFixtures, refreshSharedData],
   );
+
+  // Manual early lock, independent of kickoff/status — lets an admin close a
+  // specific fixture to new/changed predictions while leaving the rest open.
+  const toggleLock = useCallback(
+    async (id: string, locked: boolean) => {
+      const res = await fetch(API.fixture(id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ locked }),
+      });
+      if (!res.ok) throw new Error(await readError(res, "Couldn't update lock"));
+      await Promise.all([loadFixtures(), refreshSharedData()]);
+    },
+    [loadFixtures, refreshSharedData],
+  );
+
   return {
     fixtures,
     fxState,
@@ -134,5 +151,6 @@ export function useAdminData() {
     settle,
     createFixture,
     updateFixture,
+    toggleLock,
   };
 }

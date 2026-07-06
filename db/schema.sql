@@ -121,6 +121,9 @@ CREATE TABLE public.fixtures (
     away_score integer,
     status text DEFAULT 'upcoming'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    -- Admin-controlled early lock, independent of kickoff/status. See
+    -- predictions.service.ts's upsertPrediction for enforcement.
+    locked boolean DEFAULT false NOT NULL,
     CONSTRAINT fixtures_status_check CHECK ((status = ANY (ARRAY['upcoming'::text, 'finished'::text])))
 );
 

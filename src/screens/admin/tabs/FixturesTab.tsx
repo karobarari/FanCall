@@ -1,5 +1,5 @@
 import { useState, Fragment } from "react";
-import { CalendarPlus, ChevronDown, Pencil } from "lucide-react";
+import { CalendarPlus, ChevronDown, Lock, Pencil, Unlock } from "lucide-react";
 import { EmptyState } from "../components/EmptyState";
 import { Loading, ErrorBlock } from "../components/Status";
 import { Team } from "../components/Team";
@@ -20,6 +20,7 @@ export function FixturesTab({
   onSettle,
   onCreate,
   onUpdate,
+  onToggleLock,
   onRetry,
 }: {
   fixtures: Fixture[];
@@ -28,6 +29,7 @@ export function FixturesTab({
   onSettle: (id: string, home: number, away: number) => Promise<void>;
   onCreate: (draft: FixtureDraft) => Promise<void>;
   onUpdate: (id: string, draft: FixtureDraft) => Promise<void>;
+  onToggleLock: (id: string, locked: boolean) => Promise<void>;
   onRetry: () => void;
 }) {
   const [adding, setAdding] = useState(false);
@@ -38,6 +40,9 @@ export function FixturesTab({
   const [away, setAway] = useState("");
   const [scoreError, setScoreError] = useState("");
   const [scoring, setScoring] = useState(false);
+
+  // lock toggle state — tracks which row's request is in flight
+  const [lockBusyId, setLockBusyId] = useState<string | null>(null);
 
   function openScore(f: Fixture) {
     setAdding(false);
@@ -91,6 +96,15 @@ export function FixturesTab({
   async function handleUpdate(id: string, draft: FixtureDraft) {
     await onUpdate(id, draft);
     setEditing(null);
+  }
+
+  async function handleToggleLock(f: Fixture) {
+    setLockBusyId(f.id);
+    try {
+      await onToggleLock(f.id, !f.locked);
+    } finally {
+      setLockBusyId(null);
+    }
   }
 
   return (
@@ -191,7 +205,14 @@ export function FixturesTab({
                         <Team name={f.away_team} />
                       </td>
                       <td className="px-2 py-4">
-                        <StatusBadge status={f.status} />
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <StatusBadge status={f.status} />
+                          {f.locked && !finished && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-flag/15 text-flag text-[11px] font-semibold px-2 py-0.5">
+                              <Lock size={11} /> Locked
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-2">
@@ -210,6 +231,21 @@ export function FixturesTab({
                                   className="inline-flex items-center gap-1.5 rounded-[10px] border border-white/15 text-muted px-2.5 py-1.5 text-[13px] hover:text-ink hover:bg-white/5 transition"
                                 >
                                   <Pencil size={13} /> Edit
+                                </button>
+                              )}
+                              {!finished && (
+                                <button
+                                  onClick={() => handleToggleLock(f)}
+                                  disabled={lockBusyId === f.id}
+                                  title={
+                                    f.locked
+                                      ? "Reopen this fixture for predictions"
+                                      : "Lock this fixture — no new or changed predictions until unlocked"
+                                  }
+                                  className="inline-flex items-center gap-1.5 rounded-[10px] border border-white/15 text-muted px-2.5 py-1.5 text-[13px] hover:text-ink hover:bg-white/5 transition disabled:opacity-60"
+                                >
+                                  {f.locked ? <Unlock size={13} /> : <Lock size={13} />}
+                                  {f.locked ? "Unlock" : "Lock"}
                                 </button>
                               )}
                             </>

@@ -6,7 +6,7 @@ import { HttpError } from "../../lib/errors";
 // list / settle / create / update can never drift out of shape — the
 // frontend relies on these field names.
 const FIXTURE_COLUMNS = `id, season, gameweek, home_team, away_team, kickoff,
-                         home_score, away_score, status`;
+                         home_score, away_score, status, locked`;
 
 // Pre-finished status. 'upcoming' is the confirmed canonical value across the
 // system: fixtures-play.sql seeds it, and predictions.service.ts only accepts a
@@ -119,11 +119,12 @@ export async function createFixture(input: FixtureInput) {
   }
 }
 
-export type FixturePatch = Partial<FixtureInput>;
+export type FixturePatch = Partial<FixtureInput> & { locked?: boolean };
 
-// Edit a fixture's metadata (season, gameweek, teams, kickoff) — never its
-// score. Refuses once a fixture is finished: changing teams or gameweek after
-// settlement would silently invalidate already-scored predictions.
+// Edit a fixture's metadata (season, gameweek, teams, kickoff), or toggle its
+// manual lock — never its score. Refuses once a fixture is finished: changing
+// teams or gameweek after settlement would silently invalidate already-scored
+// predictions (locking a finished fixture is moot — it's already unpredictable).
 export async function updateFixture(id: string, patch: FixturePatch) {
   const existing = await pool.query(
     "select status from fixtures where id = $1",
@@ -149,6 +150,7 @@ export async function updateFixture(id: string, patch: FixturePatch) {
   if (patch.home_team !== undefined) add("home_team", patch.home_team);
   if (patch.away_team !== undefined) add("away_team", patch.away_team);
   if (patch.kickoff !== undefined) add("kickoff", patch.kickoff);
+  if (patch.locked !== undefined) add("locked", patch.locked);
 
   if (sets.length === 0) throw new HttpError(400, "No fields to update");
 

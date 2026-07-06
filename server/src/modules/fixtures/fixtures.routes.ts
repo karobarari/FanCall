@@ -85,6 +85,9 @@ const updateFixtureBody = z
     home_team: fixtureFields.home_team.optional(),
     away_team: fixtureFields.away_team.optional(),
     kickoff: fixtureFields.kickoff.optional(),
+    // Admin-controlled early lock, independent of kickoff/status — see
+    // predictions.service.ts's upsertPrediction for enforcement.
+    locked: z.boolean().optional(),
   })
   .refine((b) => Object.keys(b).length > 0, {
     message: "Provide at least one field to update",

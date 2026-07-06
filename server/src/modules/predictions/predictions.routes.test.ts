@@ -177,6 +177,38 @@ describe('predictions routes (live integration)', () => {
       expect(res.status).toBe(409);
     });
 
+    it('rejects a prediction on a fixture the admin has manually locked, even though kickoff has not passed', async () => {
+      const admin = await newUser('admin@test.dev', 'admin_1');
+      const fixtureId = await createFixture(admin);
+      const lock = await admin.patch(`/api/fixtures/${fixtureId}`).send({ locked: true });
+      expect(lock.body.fixture.status).toBe('upcoming');
+
+      const alice = await newUser('alice@test.dev', 'alice_1');
+      const res = await alice.post('/api/predictions').send({
+        fixture_id: fixtureId,
+        home_pred: 2,
+        away_pred: 1,
+        result_pred: 'home',
+      });
+      expect(res.status).toBe(409);
+    });
+
+    it('accepts a prediction again once the admin unlocks the fixture', async () => {
+      const admin = await newUser('admin@test.dev', 'admin_1');
+      const fixtureId = await createFixture(admin);
+      await admin.patch(`/api/fixtures/${fixtureId}`).send({ locked: true });
+      await admin.patch(`/api/fixtures/${fixtureId}`).send({ locked: false });
+
+      const alice = await newUser('alice@test.dev', 'alice_1');
+      const res = await alice.post('/api/predictions').send({
+        fixture_id: fixtureId,
+        home_pred: 2,
+        away_pred: 1,
+        result_pred: 'home',
+      });
+      expect(res.status).toBe(200);
+    });
+
     it('upserts — submitting twice updates the same row rather than duplicating', async () => {
       const admin = await newUser('admin@test.dev', 'admin_1');
       const fixtureId = await createFixture(admin);

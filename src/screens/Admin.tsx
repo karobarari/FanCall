@@ -46,6 +46,7 @@ export default function Admin() {
     settle,
     createFixture,
     updateFixture,
+    toggleLock,
   } = useAdminData();
 
   // Dropdown options: live teams (or PL fallback), merged with any team names
@@ -126,6 +127,7 @@ export default function Admin() {
           onSettle={settle}
           onCreate={createFixture}
           onUpdate={updateFixture}
+          onToggleLock={toggleLock}
           onRetry={loadFixtures}
         />
       ) : tab === "transactions" ? (

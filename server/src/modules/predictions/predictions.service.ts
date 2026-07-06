@@ -19,13 +19,13 @@ export async function upsertPrediction(
   resultPred: "home" | "draw" | "away",
 ) {
   const fixture = await pool.query(
-    "select status, kickoff from fixtures where id = $1",
+    "select status, kickoff, locked from fixtures where id = $1",
     [fixtureId],
   );
   if (!fixture.rowCount) throw new HttpError(404, "Fixture not found");
 
-  const { status, kickoff } = fixture.rows[0];
-  if (status !== "upcoming" || new Date(kickoff) <= new Date()) {
+  const { status, kickoff, locked } = fixture.rows[0];
+  if (status !== "upcoming" || locked || new Date(kickoff) <= new Date()) {
     throw new HttpError(409, "This match has locked");
   }
 

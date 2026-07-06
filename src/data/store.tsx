@@ -21,6 +21,7 @@ export interface Fixture {
   home_score: number | null;
   away_score: number | null;
   status: "upcoming" | "finished";
+  locked: boolean;
 }
 
 export interface Prediction {

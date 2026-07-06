@@ -10,6 +10,7 @@ export type Fixture = {
   home_score: number | null;
   away_score: number | null;
   status: string;
+  locked: boolean;
 };
 
 export type FixtureDraft = {
