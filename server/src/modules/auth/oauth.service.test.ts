@@ -93,7 +93,20 @@ describe('oauth.service (live integration, no HTTP/provider)', () => {
         email: 'applefan@test.dev',
         display_name: 'applefan',
         team_name: PILOT_TEAM_NAME,
+        is_admin: false,
       });
+    });
+
+    it('marks the admin account as admin via OAuth too', async () => {
+      const user = await completeOAuthSignup({
+        provider: 'apple',
+        providerId: 'apple-sub-admin',
+        email: 'admin@test.dev',
+        emailVerified: true,
+        displayName: 'oauthadmin',
+      });
+      expect(user.is_admin).toBe(true);
+      expect(user.paid).toBe(true);
     });
 
     it('rejects a username that is already taken', async () => {

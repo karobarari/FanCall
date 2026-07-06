@@ -87,12 +87,14 @@ export default function AppLayout() {
             Leaderboard
           </NavLink>
 
-          <NavLink to="/app/admin" className={navClass}>
-            <span className="text-[13px] w-4 text-center" aria-hidden>
-              ⚙
-            </span>
-            Admin Dashboard
-          </NavLink>
+          {user?.is_admin && (
+            <NavLink to="/app/admin" className={navClass}>
+              <span className="text-[13px] w-4 text-center" aria-hidden>
+                ⚙
+              </span>
+              Admin Dashboard
+            </NavLink>
+          )}
         </nav>
 
         <div className="mt-auto flex flex-col gap-2">

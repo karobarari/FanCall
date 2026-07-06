@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
+import RequireAdmin from "./auth/RequireAdmin";
 import { DataProvider } from "./data/store";
 import AppLayout from "./components/AppLayout";
 import Login from "./screens/Login";
@@ -74,7 +75,9 @@ function Routed() {
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<MakeYourCall />} />
           <Route path="leaderboard" element={<Leaderboard />} />
-          <Route path="admin" element={<Admin />} />
+          <Route element={<RequireAdmin />}>
+            <Route path="admin" element={<Admin />} />
+          </Route>
         </Route>
       </Route>
 

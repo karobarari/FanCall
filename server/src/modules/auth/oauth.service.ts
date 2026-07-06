@@ -33,7 +33,7 @@ const PROVIDER_COLUMN: Record<OAuthProvider, 'google_id' | 'apple_id'> = {
 export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthLoginResult> {
   const column = PROVIDER_COLUMN[identity.provider];
 
-  const byProvider = await pool.query<PublicUser>(
+  const byProvider = await pool.query<Omit<PublicUser, 'is_admin'>>(
     `select u.id, u.email, u.display_name, u.team_id, t.name as team_name, u.paid
        from users u
        join teams t on t.id = u.team_id
@@ -41,7 +41,8 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
     [identity.providerId],
   );
   if (byProvider.rowCount) {
-    return { status: 'logged_in', user: byProvider.rows[0] };
+    const found = byProvider.rows[0];
+    return { status: 'logged_in', user: { ...found, is_admin: isAdminEmail(found.email) } };
   }
 
   const byEmail = await pool.query<{ id: string; team_id: string; team_name: string; paid: boolean }>(
@@ -70,6 +71,7 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
         team_id: byEmail.rows[0].team_id,
         team_name: byEmail.rows[0].team_name,
         paid: byEmail.rows[0].paid,
+        is_admin: isAdminEmail(rows[0].email),
       },
     };
   }
@@ -93,7 +95,7 @@ export async function completeOAuthSignup(input: CompleteOAuthSignupInput): Prom
        returning id, email, display_name`,
       [input.email, input.emailVerified, input.displayName, team.id, paid, input.providerId],
     );
-    return { ...rows[0], team_id: team.id, team_name: team.name, paid };
+    return { ...rows[0], team_id: team.id, team_name: team.name, paid, is_admin: isAdminEmail(input.email) };
   } catch (err) {
     if (isUniqueViolation(err)) {
       throw new HttpError(409, 'That username is already taken, or the account already exists');

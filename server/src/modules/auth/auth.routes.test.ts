@@ -26,18 +26,20 @@ describe('auth routes (live integration)', () => {
         display_name: 'alice_1',
         team_name: PILOT_TEAM_NAME,
         paid: false,
+        is_admin: false,
       });
       expect(typeof res.body.user.team_id).toBe('string');
       expect(res.headers['set-cookie']).toBeDefined();
     });
 
-    it('auto-marks the admin account as paid (jest.setup.ts pins ADMIN_EMAIL to admin@test.dev)', async () => {
+    it('auto-marks the admin account as paid and admin (jest.setup.ts pins ADMIN_EMAIL to admin@test.dev)', async () => {
       const res = await request(app).post('/api/auth/signup').send({
         email: 'admin@test.dev',
         password: 'correct-horse',
         displayName: 'admin_1',
       });
       expect(res.body.user.paid).toBe(true);
+      expect(res.body.user.is_admin).toBe(true);
     });
 
     it('rejects an invalid email', async () => {
@@ -116,6 +118,7 @@ describe('auth routes (live integration)', () => {
       expect(res.status).toBe(200);
       expect(res.body.user.email).toBe('alice@test.dev');
       expect(res.body.user.team_name).toBe(PILOT_TEAM_NAME);
+      expect(res.body.user.is_admin).toBe(false);
     });
 
     it('rejects the wrong password with the same message as an unknown email', async () => {
@@ -149,10 +152,22 @@ describe('auth routes (live integration)', () => {
       const me = await client.get('/api/auth/me');
       expect(me.status).toBe(200);
       expect(me.body.user.email).toBe('alice@test.dev');
+      expect(me.body.user.is_admin).toBe(false);
 
       await client.post('/api/auth/logout').send({});
       const afterLogout = await client.get('/api/auth/me');
       expect(afterLogout.status).toBe(401);
+    });
+
+    it('reflects is_admin true for the admin account', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'admin@test.dev',
+        password: 'correct-horse',
+        displayName: 'admin_1',
+      });
+      const me = await client.get('/api/auth/me');
+      expect(me.body.user.is_admin).toBe(true);
     });
   });
 });

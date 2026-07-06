@@ -16,6 +16,7 @@ export interface User {
   team_id: string;
   team_name: string;
   paid: boolean;
+  is_admin: boolean;
 }
 
 interface AuthContextValue {
