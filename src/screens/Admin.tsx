@@ -6,6 +6,7 @@ import { OverviewTab } from "./admin/tabs/OverviewTab";
 import { FixturesTab } from "./admin/tabs/FixturesTab";
 import { PlayersTab } from "./admin/tabs/PlayersTab";
 import { TransactionsTab } from "./admin/tabs/TransactionsTab";
+import ClubBadge from "../components/ClubBadge";
 
 /* ==================================================================
    Admin dashboard — backed by LIVE data from the API.
@@ -73,9 +74,7 @@ export default function Admin() {
       {/* Header */}
       <header className="flex items-center justify-between gap-6 mb-6 flex-wrap">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full ring-2 ring-city-gold bg-white text-navy font-extrabold flex items-center justify-center text-[17px]">
-            MC
-          </div>
+          <ClubBadge size={56} />
           <div>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.6px] text-ink">
               Admin Dashboard

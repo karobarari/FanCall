@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import Avatar from "./Avatar";
+import ClubBadge from "./ClubBadge";
 
 function navClass({ isActive }: { isActive: boolean }) {
   const base =
@@ -58,9 +59,7 @@ export default function AppLayout() {
         `}
       >
         <div className="flex items-center gap-3 pt-14">
-          <div className="w-[42px] h-[42px] rounded-full ring-2 ring-city-gold bg-gradient-to-br from-gold to-[#1c2c5b] text-[#0a1729] font-extrabold text-[15px] flex items-center justify-center tracking-[-0.5px]">
-            MC
-          </div>
+          <ClubBadge size={42} />
 
           <div className="flex flex-col leading-[1.2]">
             <span className="font-bold text-base tracking-[0.3px]">

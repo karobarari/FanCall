@@ -15,6 +15,7 @@ import {
   type ClubResult,
 } from '../lib/result';
 import { scorePrediction } from '../lib/scoring';
+import ClubBadge from '../components/ClubBadge';
 
 interface GuideRow {
   icon: string;
@@ -597,9 +598,7 @@ export default function MakeYourCall() {
     <div>
       <header className="flex items-center justify-between gap-6 mb-[26px] flex-wrap">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full ring-2 ring-city-gold bg-white text-navy font-extrabold flex items-center justify-center text-[17px]">
-            MC
-          </div>
+          <ClubBadge size={56} />
           <div>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.6px] text-ink">
               Make Your Call

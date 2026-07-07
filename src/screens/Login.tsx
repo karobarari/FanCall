@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import OAuthButtons from "../components/OAuthButtons";
+import ClubBadge from "../components/ClubBadge";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   denied: "Sign-in was cancelled.",
@@ -38,9 +39,7 @@ export default function Login() {
 
   return (
     <div className="flex-1 flex flex-col justify-center p-4 gap-3">
-      <div className="w-[72px] h-[72px] rounded-full ring-2 ring-city-gold bg-gradient-to-br from-[#6cabdd] to-[#1c2c5b] flex items-center justify-center text-white font-extrabold text-xl tracking-[-0.5px] mx-auto">
-        MC
-      </div>
+      <ClubBadge size={72} className="mx-auto" />
       <p className="text-center text-[#73726c] text-[15px] mt-2 mb-4">
         FanCall
       </p>
