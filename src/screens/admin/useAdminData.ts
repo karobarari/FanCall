@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { API } from "./config";
-import type { Fixture, FixtureDraft, LeaderboardEntry, Load } from "./types";
-import { isObj, pickLeaderboard, pickTeams, readError } from "./utils";
+import type { AdminUserRow, Fixture, FixtureDraft, LeaderboardEntry, Load } from "./types";
+import { isObj, pickAdminUsers, pickLeaderboard, pickTeams, readError } from "./utils";
 import { useFixtures as useSharedFixtures } from "../../data/store";
 /* ==================================================================
    All admin data: fixtures + leaderboard + teams, plus the mutations
@@ -21,6 +21,8 @@ export function useAdminData() {
   const [lbState, setLbState] = useState<Load>("loading");
   const [teams, setTeams] = useState<string[]>([]);
   const [teamsReady, setTeamsReady] = useState(false);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [usersState, setUsersState] = useState<Load>("loading");
 
  const loadFixtures = useCallback(async () => {
    setFxState("loading");
@@ -55,6 +57,18 @@ export function useAdminData() {
     }
   }, []);
 
+  const loadUsers = useCallback(async () => {
+    setUsersState("loading");
+    try {
+      const res = await fetch(API.users, { credentials: "include" });
+      if (!res.ok) throw new Error();
+      setUsers(pickAdminUsers(await res.json()));
+      setUsersState("ready");
+    } catch {
+      setUsersState("error");
+    }
+  }, []);
+
   // Team list for the fixture dropdowns. Prefers your seeded `teams` table;
   // silently falls back to PREMIER_LEAGUE_TEAMS if the endpoint isn't there.
   const loadTeams = useCallback(async () => {
@@ -75,7 +89,8 @@ export function useAdminData() {
     void loadFixtures();
     void loadLeaderboard();
     void loadTeams();
-  }, [loadFixtures, loadLeaderboard, loadTeams]);
+    void loadUsers();
+  }, [loadFixtures, loadLeaderboard, loadTeams, loadUsers]);
 
   const settle = useCallback(
     async (id: string, homeScore: number, awayScore: number) => {
@@ -139,6 +154,35 @@ export function useAdminData() {
     [loadFixtures, refreshSharedData],
   );
 
+  const updateUsername = useCallback(
+    async (id: string, displayName: string) => {
+      const res = await fetch(API.user(id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ displayName }),
+      });
+      if (!res.ok) throw new Error(await readError(res, "Couldn't update username"));
+      await Promise.all([loadUsers(), loadLeaderboard()]);
+    },
+    [loadUsers, loadLeaderboard],
+  );
+
+  const setUserActive = useCallback(
+    async (id: string, isActive: boolean) => {
+      const res = await fetch(API.userStatus(id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ is_active: isActive }),
+      });
+      if (!res.ok) throw new Error(await readError(res, "Couldn't update account status"));
+      // Deactivating/reactivating changes leaderboard membership too.
+      await Promise.all([loadUsers(), loadLeaderboard()]);
+    },
+    [loadUsers, loadLeaderboard],
+  );
+
   return {
     fixtures,
     fxState,
@@ -146,11 +190,16 @@ export function useAdminData() {
     lbState,
     teams,
     teamsReady,
+    users,
+    usersState,
     loadFixtures,
     loadLeaderboard,
+    loadUsers,
     settle,
     createFixture,
     updateFixture,
     toggleLock,
+    updateUsername,
+    setUserActive,
   };
 }

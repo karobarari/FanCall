@@ -10,6 +10,7 @@ import { predictionsRoutes } from './modules/predictions/predictions.routes';
 import { leaderboardRoutes } from './modules/leaderboard/leaderboard.routes';
 import { teamsRoutes } from './modules/teams/teams.routes';
 import { paymentRoutes } from './modules/payment/payment.routes';
+import { adminUsersRoutes } from './modules/admin/adminUsers.routes';
 import { notFound, errorHandler } from './middleware/error';
 
 export function createApp() {
@@ -49,6 +50,7 @@ export function createApp() {
   app.use('/api/leaderboard', leaderboardRoutes);
   app.use('/api/teams', teamsRoutes);
   app.use('/api/payment', paymentRoutes);
+  app.use('/api/admin/users', adminUsersRoutes);
 
   app.use(notFound);
   app.use(errorHandler);

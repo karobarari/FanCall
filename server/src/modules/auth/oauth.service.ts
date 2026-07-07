@@ -34,7 +34,7 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
   const column = PROVIDER_COLUMN[identity.provider];
 
   const byProvider = await pool.query<Omit<PublicUser, 'is_admin'>>(
-    `select u.id, u.email, u.display_name, u.team_id, t.name as team_name, u.paid
+    `select u.id, u.email, u.display_name, u.avatar, u.team_id, t.name as team_name, u.paid
        from users u
        join teams t on t.id = u.team_id
       where u.${column} = $1`,
@@ -59,9 +59,14 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
         'An account already exists with this email — log in with your password instead.',
       );
     }
-    const { rows } = await pool.query<{ id: string; email: string; display_name: string | null }>(
+    const { rows } = await pool.query<{
+      id: string;
+      email: string;
+      display_name: string | null;
+      avatar: string | null;
+    }>(
       `update users set ${column} = $1, email_verified = true where id = $2
-       returning id, email, display_name`,
+       returning id, email, display_name, avatar`,
       [identity.providerId, byEmail.rows[0].id],
     );
     return {
@@ -89,10 +94,15 @@ export async function completeOAuthSignup(input: CompleteOAuthSignupInput): Prom
   const paid = isAdminEmail(input.email);
 
   try {
-    const { rows } = await pool.query<{ id: string; email: string; display_name: string | null }>(
+    const { rows } = await pool.query<{
+      id: string;
+      email: string;
+      display_name: string | null;
+      avatar: string | null;
+    }>(
       `insert into users (email, email_verified, display_name, team_id, paid, ${column})
        values ($1, $2, $3, $4, $5, $6)
-       returning id, email, display_name`,
+       returning id, email, display_name, avatar`,
       [input.email, input.emailVerified, input.displayName, team.id, paid, input.providerId],
     );
     return { ...rows[0], team_id: team.id, team_name: team.name, paid, is_admin: isAdminEmail(input.email) };

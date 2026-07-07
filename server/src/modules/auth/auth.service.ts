@@ -15,6 +15,8 @@ export interface PublicUser {
   id: string;
   email: string;
   display_name: string | null;
+  // Preset id "<color>-<icon>" or null (frontend falls back to initials).
+  avatar: string | null;
   team_id: string;
   team_name: string;
   paid: boolean;
@@ -33,10 +35,15 @@ export async function signup(email: string, password: string, displayName: strin
 
   const hash = await hashPassword(password);
   try {
-    const { rows } = await pool.query<{ id: string; email: string; display_name: string | null }>(
+    const { rows } = await pool.query<{
+      id: string;
+      email: string;
+      display_name: string | null;
+      avatar: string | null;
+    }>(
       `insert into users (email, password_hash, display_name, team_id, paid)
        values ($1, $2, $3, $4, $5)
-       returning id, email, display_name`,
+       returning id, email, display_name, avatar`,
       [email, hash, displayName, team.id, paid]
     );
     return { ...rows[0], team_id: team.id, team_name: team.name, paid, is_admin: isAdminEmail(email) };
@@ -51,12 +58,14 @@ export async function login(email: string, password: string): Promise<PublicUser
     id: string;
     email: string;
     display_name: string | null;
+    avatar: string | null;
     password_hash: string | null;
     team_id: string;
     team_name: string;
     paid: boolean;
+    is_active: boolean;
   }>(
-    `select u.id, u.email, u.display_name, u.password_hash, u.team_id, t.name as team_name, u.paid
+    `select u.id, u.email, u.display_name, u.avatar, u.password_hash, u.team_id, t.name as team_name, u.paid, u.is_active
        from users u
        join teams t on t.id = u.team_id
       where u.email = $1`,
@@ -69,10 +78,16 @@ export async function login(email: string, password: string): Promise<PublicUser
   if (!user || !passwordOk) {
     throw new HttpError(401, 'Wrong email or password');
   }
+  // Checked only after a correct password, so a deactivated account isn't
+  // distinguishable from a wrong password to someone who doesn't know it.
+  if (!user.is_active) {
+    throw new HttpError(403, 'This account has been deactivated');
+  }
   return {
     id: user.id,
     email: user.email,
     display_name: user.display_name,
+    avatar: user.avatar,
     team_id: user.team_id,
     team_name: user.team_name,
     paid: user.paid,
@@ -80,9 +95,60 @@ export async function login(email: string, password: string): Promise<PublicUser
   };
 }
 
+export interface ProfileUpdate {
+  displayName?: string;
+  // A preset id sets the avatar; null clears it back to the initials fallback.
+  avatar?: string | null;
+}
+
+export async function updateProfile(userId: string, fields: ProfileUpdate): Promise<PublicUser> {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  if (fields.displayName !== undefined) {
+    values.push(fields.displayName);
+    sets.push(`display_name = $${values.length}`);
+  }
+  if (fields.avatar !== undefined) {
+    values.push(fields.avatar);
+    sets.push(`avatar = $${values.length}`);
+  }
+  if (!sets.length) throw new HttpError(400, 'Nothing to update');
+
+  values.push(userId);
+  try {
+    const { rowCount } = await pool.query(
+      `update users set ${sets.join(', ')} where id = $${values.length}`,
+      values
+    );
+    if (!rowCount) throw new HttpError(404, 'User not found');
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new HttpError(409, 'That username is already taken');
+    throw err;
+  }
+  return getUser(userId);
+}
+
+export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  const { rows } = await pool.query<{ password_hash: string | null }>(
+    'select password_hash from users where id = $1',
+    [userId]
+  );
+  if (!rows[0]) throw new HttpError(404, 'User not found');
+
+  const passwordHash = rows[0].password_hash;
+  if (!passwordHash) {
+    throw new HttpError(400, 'This account signs in with Google or Apple and has no password to change');
+  }
+  const ok = await verifyPassword(currentPassword, passwordHash);
+  if (!ok) throw new HttpError(401, 'Current password is incorrect');
+
+  const hash = await hashPassword(newPassword);
+  await pool.query('update users set password_hash = $1 where id = $2', [hash, userId]);
+}
+
 export async function getUser(id: string): Promise<PublicUser> {
   const { rows } = await pool.query<Omit<PublicUser, 'is_admin'>>(
-    `select u.id, u.email, u.display_name, u.team_id, t.name as team_name, u.paid
+    `select u.id, u.email, u.display_name, u.avatar, u.team_id, t.name as team_name, u.paid
        from users u
        join teams t on t.id = u.team_id
       where u.id = $1`,

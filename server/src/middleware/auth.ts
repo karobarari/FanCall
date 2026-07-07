@@ -43,6 +43,26 @@ export async function requireAdmin(
   next();
 }
 
+// Gates the product behind a live account. A deactivated user (admin user
+// management, roadmap step 28) is blocked at login, but a session cookie
+// issued before deactivation would otherwise still work — this closes that
+// gap for the one route that matters (predictions), the same way
+// requirePaid closes the equivalent gap for payment.
+export async function requireActive(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  const { rows } = await pool.query<{ is_active: boolean }>(
+    "select is_active from users where id = $1",
+    [req.userId],
+  );
+  if (!rows[0]?.is_active) {
+    throw new HttpError(403, "This account has been deactivated");
+  }
+  next();
+}
+
 // Gates the paid product (predictions) behind the demo payment step. No
 // real payment processing yet (roadmap step 18) — payment.service.ts just
 // flips users.paid; this middleware is what actually enforces it server-side

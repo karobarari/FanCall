@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import Avatar from "./Avatar";
 
 function navClass({ isActive }: { isActive: boolean }) {
   const base =
@@ -99,12 +100,18 @@ export default function AppLayout() {
 
         <div className="mt-auto flex flex-col gap-2">
           {user && (
-            <div className="px-1 leading-[1.3]">
-              <div className="font-medium text-sm text-ink">{user.display_name}</div>
-              <div className="text-[11px] text-faint uppercase tracking-[0.5px]">
-                {user.team_name}
+            <NavLink
+              to="/app/profile"
+              className="px-1 leading-[1.3] no-underline hover:opacity-80 flex items-center gap-2.5"
+            >
+              <Avatar name={user.display_name ?? user.email} avatar={user.avatar} size={34} />
+              <div>
+                <div className="font-medium text-sm text-ink">{user.display_name}</div>
+                <div className="text-[11px] text-faint uppercase tracking-[0.5px]">
+                  {user.team_name}
+                </div>
               </div>
-            </div>
+            </NavLink>
           )}
           <button
             className="bg-transparent border border-white/10 text-muted rounded-[10px] p-2.5 text-[13px] cursor-pointer hover:border-white/20 hover:text-ink"

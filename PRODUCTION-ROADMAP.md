@@ -60,9 +60,9 @@ something only you can provide, do everything in my power and hand you the rest)
 | 23 | Google / Apple OAuth | 🔑 | F |
 | 24 | Automated fixtures + results feed → auto-settle | 🔑 | F |
 | 25 | Notifications (reminders / results) | 🔑 | F |
-| 26 | Mobile / responsive polish | 🤖 | F |
-
----
+| 26 | Mobile / responsive po
+| 27 | User profile self-service (username, password, avatar) | ✅ | A |
+| 28 | Admin user management (edit / deactivate users) | ✅ | A |
 
 # Phase A — Complete the product flow
 *Goal: a clean, complete predict→settle→leaderboard product with real accounts.*
@@ -111,6 +111,31 @@ omits); remove the `console.log` in `upsertPrediction`; fold the missed-credit
 `hasPrediction` export if still unused.
 **Depends on:** ideally after 3–4 so nothing in flight references removed code.
 **Verify:** `tsc -b && vite build`; existing tests still green.
+
+### 27. User profile self-service — ✅ DONE
+`PATCH /api/auth/me` (username, plus a preset avatar — `"<color>-<icon>"`,
+validated server-side against a fixed list; no upload/storage dependency) and
+`PATCH /api/auth/me/password` (current + new password). New `screens/Profile.tsx`
+reachable from the sidebar, with an avatar picker, username form, and password
+form. Real image upload is still a future 🔑 add-on (needs S3/Cloudinary).
+Migration: `2026-07-07-user-avatar.sql`. 121→133 backend tests passing;
+verified live against the dev DB (username change persists, password change
+invalidates the old one).
+
+### 28. Admin user management — ✅ DONE
+`GET /api/admin/users` (email, username, club, join date, paid + active
+status), admin-only `PATCH /api/admin/users/:id` (edit username) and
+`PATCH /api/admin/users/:id/status` (deactivate/reactivate — a soft
+`users.is_active` flag, not a delete, so predictions/scores are untouched).
+Deactivation blocks login (`auth.service.ts`), excludes the user from the
+`leaderboard` view, and — via a new `requireActive` middleware mirroring
+`requirePaid` — cuts off an already-open session from making further
+predictions. An admin can't deactivate their own account. Players tab in
+`screens/admin/tabs/PlayersTab.tsx` now shows the full account list (incl.
+deactivated users, so they can be reactivated) with inline username editing
+and a deactivate/reactivate action. Migration: `2026-07-07-admin-user-management.sql`.
+12 new backend tests; verified live (non-admin gets 403, schema applied to
+dev DB).
 
 ---
 
@@ -324,9 +349,9 @@ separate project.)
   **Step 24:** sports-data API subscription.
 
 ## Suggested default path
-2 → 3 → 4 → 5 (product complete) → stand up staging early (10→11→12→14) → 6 → 7 →
-8 → 9 (hardened) → 15/16 (launch docs) → **pilot launch** → 17 + 18 → 19 → 20
-(monetize) → 21 → 22 (sell to more clubs) → 23/24/25/26 (enhance).
+2 → 3 → 4 → 5 → 27 → 28 (product complete) → stand up staging early (10→11→12→14)
+→ 6 → 7 → 8 → 9 (hardened) → 15/16 (launch docs) → **pilot launch** → 17 + 18 →
+19 → 20 (monetize) → 21 → 22 (sell to more clubs) → 23/24/25/26 (enhance).
 
 > Note: a **private pilot with one club, no prizes** can launch after Phase A + a
 > staging deploy + basic policy docs — before the gambling opinion — because with

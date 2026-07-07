@@ -9,6 +9,9 @@ export const API = {
   settle: (id: string) => `${API_BASE}/fixtures/${id}/settle`, //    POST  -> { fixture }
   leaderboard: `${API_BASE}/leaderboard`, //           GET -> { leaderboard }  (path/envelope ASSUMED)
   teams: `${API_BASE}/teams`, //                       GET -> { teams } | string[]  (path ASSUMED)
+  users: `${API_BASE}/admin/users`, //                 GET -> { users }
+  user: (id: string) => `${API_BASE}/admin/users/${id}`, //         PATCH -> { user }
+  userStatus: (id: string) => `${API_BASE}/admin/users/${id}/status`, // PATCH -> { user }
 };
 
 // Optional: set to your club's exact team name to highlight it in the table.

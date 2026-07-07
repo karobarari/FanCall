@@ -15,13 +15,16 @@ import { TransactionsTab } from "./admin/tabs/TransactionsTab";
        edit metadata (PATCH /api/fixtures/:id)
      - Overview: Players Playing, Avg Points, Current Leader, Top Players
        chart, Fixtures Completed
-     - Players tab: name / points / rank             GET /api/leaderboard
+     - Players tab: full account list incl. deactivated (GET /api/admin/users),
+       points/rank joined in from GET /api/leaderboard, edit username
+       (PATCH /api/admin/users/:id), deactivate/reactivate
+       (PATCH /api/admin/users/:id/status)
 
    NOT WIRED — left empty with TODOs (no endpoint exists yet):
      - TODO(payments): Total Revenue, Avg Transaction, Cumulative Revenue, Transactions tab
-     - TODO(stats):    Perfect Calls count (leaderboard doesn't expose it)
-     - TODO(users):    Players tab columns Club / Played / Perfect Calls / Joined,
-                       and "Add New Player"
+     - TODO(stats):    Perfect Calls / Played count (leaderboard doesn't expose them)
+     - TODO(users):    "Add New Player" — creating a player is an auth-user/invite
+                       flow, not a plain create endpoint
 
    Structure:
      admin/config.ts        endpoints + constants + tab defs
@@ -41,12 +44,17 @@ export default function Admin() {
     lbState,
     teams,
     teamsReady,
+    users,
+    usersState,
     loadFixtures,
     loadLeaderboard,
+    loadUsers,
     settle,
     createFixture,
     updateFixture,
     toggleLock,
+    updateUsername,
+    setUserActive,
   } = useAdminData();
 
   // Dropdown options: live teams (or PL fallback), merged with any team names
@@ -81,6 +89,7 @@ export default function Admin() {
           onClick={() => {
             void loadFixtures();
             void loadLeaderboard();
+            void loadUsers();
           }}
           className="flex items-center gap-2 rounded-xl border border-white/15 text-ink px-4 py-2.5 text-sm font-semibold hover:bg-white/5 transition"
         >
@@ -133,7 +142,14 @@ export default function Admin() {
       ) : tab === "transactions" ? (
         <TransactionsTab />
       ) : (
-        <PlayersTab leaderboard={leaderboard} state={lbState} onRetry={loadLeaderboard} />
+        <PlayersTab
+          users={users}
+          state={usersState}
+          leaderboard={leaderboard}
+          onRetry={loadUsers}
+          onUpdateUsername={updateUsername}
+          onSetActive={setUserActive}
+        />
       )}
     </div>
   );

@@ -11,6 +11,7 @@ import CompleteSignup from "./screens/CompleteSignup";
 import Payment from "./screens/Payment";
 import MakeYourCall from "./screens/MakeYourCall";
 import Leaderboard from "./screens/Leaderboard";
+import Profile from "./screens/Profile";
 import Admin from "./screens/Admin";
 import "./playpage.css";
 
@@ -75,6 +76,7 @@ function Routed() {
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<MakeYourCall />} />
           <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="profile" element={<Profile />} />
           <Route element={<RequireAdmin />}>
             <Route path="admin" element={<Admin />} />
           </Route>

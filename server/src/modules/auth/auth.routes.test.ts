@@ -170,4 +170,177 @@ describe('auth routes (live integration)', () => {
       expect(me.body.user.is_admin).toBe(true);
     });
   });
+
+  describe('PATCH /api/auth/me', () => {
+    it('rejects an unauthenticated request', async () => {
+      const res = await request(app).patch('/api/auth/me').send({ displayName: 'alice_2' });
+      expect(res.status).toBe(401);
+    });
+
+    it('updates the username', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'alice@test.dev',
+        password: 'correct-horse',
+        displayName: 'alice_1',
+      });
+
+      const res = await client.patch('/api/auth/me').send({ displayName: 'alice_2' });
+      expect(res.status).toBe(200);
+      expect(res.body.user.display_name).toBe('alice_2');
+
+      const me = await client.get('/api/auth/me');
+      expect(me.body.user.display_name).toBe('alice_2');
+    });
+
+    it('rejects an invalid username', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'alice@test.dev',
+        password: 'correct-horse',
+        displayName: 'alice_1',
+      });
+
+      const res = await client.patch('/api/auth/me').send({ displayName: 'ab' });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a username already taken by another account, case-insensitively', async () => {
+      await request(app).post('/api/auth/signup').send({
+        email: 'bob@test.dev',
+        password: 'correct-horse',
+        displayName: 'bob_1',
+      });
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'alice@test.dev',
+        password: 'correct-horse',
+        displayName: 'alice_1',
+      });
+
+      const res = await client.patch('/api/auth/me').send({ displayName: 'BOB_1' });
+      expect(res.status).toBe(409);
+    });
+
+    it('sets a preset avatar, then clears it back to null', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'alice@test.dev',
+        password: 'correct-horse',
+        displayName: 'alice_1',
+      });
+
+      const set = await client.patch('/api/auth/me').send({ avatar: 'sky-ball' });
+      expect(set.status).toBe(200);
+      expect(set.body.user.avatar).toBe('sky-ball');
+
+      const me = await client.get('/api/auth/me');
+      expect(me.body.user.avatar).toBe('sky-ball');
+
+      const cleared = await client.patch('/api/auth/me').send({ avatar: null });
+      expect(cleared.status).toBe(200);
+      expect(cleared.body.user.avatar).toBeNull();
+    });
+
+    it.each(['sky-unknown', 'neon-ball', 'not_a_preset', ''])(
+      'rejects an invalid avatar preset %p',
+      async (avatar) => {
+        const client = agent();
+        await client.post('/api/auth/signup').send({
+          email: 'alice@test.dev',
+          password: 'correct-horse',
+          displayName: 'alice_1',
+        });
+        const res = await client.patch('/api/auth/me').send({ avatar });
+        expect(res.status).toBe(400);
+      },
+    );
+
+    it('rejects an empty body with nothing to update', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'alice@test.dev',
+        password: 'correct-horse',
+        displayName: 'alice_1',
+      });
+      const res = await client.patch('/api/auth/me').send({});
+      expect(res.status).toBe(400);
+    });
+
+    it('updates username and avatar together in one request', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'alice@test.dev',
+        password: 'correct-horse',
+        displayName: 'alice_1',
+      });
+      const res = await client
+        .patch('/api/auth/me')
+        .send({ displayName: 'alice_2', avatar: 'gold-crown' });
+      expect(res.status).toBe(200);
+      expect(res.body.user.display_name).toBe('alice_2');
+      expect(res.body.user.avatar).toBe('gold-crown');
+    });
+  });
+
+  describe('PATCH /api/auth/me/password', () => {
+    it('rejects an unauthenticated request', async () => {
+      const res = await request(app)
+        .patch('/api/auth/me/password')
+        .send({ currentPassword: 'correct-horse', newPassword: 'new-password-1' });
+      expect(res.status).toBe(401);
+    });
+
+    it('changes the password and the old one stops working', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'alice@test.dev',
+        password: 'correct-horse',
+        displayName: 'alice_1',
+      });
+
+      const res = await client
+        .patch('/api/auth/me/password')
+        .send({ currentPassword: 'correct-horse', newPassword: 'new-password-1' });
+      expect(res.status).toBe(200);
+
+      const oldLogin = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'alice@test.dev', password: 'correct-horse' });
+      expect(oldLogin.status).toBe(401);
+
+      const newLogin = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'alice@test.dev', password: 'new-password-1' });
+      expect(newLogin.status).toBe(200);
+    });
+
+    it('rejects the wrong current password', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'alice@test.dev',
+        password: 'correct-horse',
+        displayName: 'alice_1',
+      });
+
+      const res = await client
+        .patch('/api/auth/me/password')
+        .send({ currentPassword: 'wrong-password', newPassword: 'new-password-1' });
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects a new password under 8 characters', async () => {
+      const client = agent();
+      await client.post('/api/auth/signup').send({
+        email: 'alice@test.dev',
+        password: 'correct-horse',
+        displayName: 'alice_1',
+      });
+
+      const res = await client
+        .patch('/api/auth/me/password')
+        .send({ currentPassword: 'correct-horse', newPassword: 'short' });
+      expect(res.status).toBe(400);
+    });
+  });
 });

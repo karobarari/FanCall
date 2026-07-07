@@ -6,6 +6,7 @@ import { authRateLimit } from '../../middleware/rateLimit';
 import { setSession, clearSession } from '../../lib/session';
 import { HttpError } from '../../lib/errors';
 import { USERNAME_MESSAGE, USERNAME_PATTERN } from '../../lib/username';
+import { AVATAR_MESSAGE, isValidAvatar } from '../../lib/avatar';
 import * as authService from './auth.service';
 
 export const authRoutes = Router();
@@ -56,5 +57,50 @@ authRoutes.get(
   asyncHandler(async (req, res) => {
     const user = await authService.getUser(req.userId!);
     res.json({ user });
+  })
+);
+
+// Both fields optional but at least one required; avatar null clears the
+// preset back to the initials fallback.
+const profileBody = z
+  .object({
+    displayName: z.string().regex(USERNAME_PATTERN, USERNAME_MESSAGE).optional(),
+    avatar: z
+      .union([z.string().refine(isValidAvatar, AVATAR_MESSAGE), z.null()])
+      .optional(),
+  })
+  .refine((body) => body.displayName !== undefined || body.avatar !== undefined, {
+    message: 'Nothing to update',
+  });
+
+authRoutes.patch(
+  '/me',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const parsed = profileBody.safeParse(req.body);
+    if (!parsed.success) {
+      throw new HttpError(400, parsed.error.issues[0]?.message ?? 'Invalid profile update');
+    }
+    const user = await authService.updateProfile(req.userId!, parsed.data);
+    res.json({ user });
+  })
+);
+
+const passwordBody = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
+authRoutes.patch(
+  '/me/password',
+  requireAuth,
+  authRateLimit,
+  asyncHandler(async (req, res) => {
+    const parsed = passwordBody.safeParse(req.body);
+    if (!parsed.success) {
+      throw new HttpError(400, parsed.error.issues[0]?.message ?? 'Invalid password');
+    }
+    await authService.changePassword(req.userId!, parsed.data.currentPassword, parsed.data.newPassword);
+    res.json({ ok: true });
   })
 );

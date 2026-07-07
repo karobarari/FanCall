@@ -1,4 +1,4 @@
-import type { LeaderboardEntry } from "./types";
+import type { AdminUserRow, LeaderboardEntry } from "./types";
 
 export const truncate = (s: string) => (s.length > 12 ? s.slice(0, 12) + "\u2026" : s);
 export const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
@@ -24,6 +24,26 @@ export function pickLeaderboard(json: unknown): LeaderboardEntry[] {
       display_name: typeof name === "string" ? name : null,
       total_points: Number(r.total_points ?? r.points ?? 0),
       rank: Number(r.rank ?? 0),
+    };
+  });
+}
+
+// GET /api/admin/users response — field names are fixed (this endpoint and
+// its frontend consumer are written together), so this just coerces types
+// defensively rather than guessing at alternate shapes like pickLeaderboard.
+export function pickAdminUsers(json: unknown): AdminUserRow[] {
+  const raw = isObj(json) && Array.isArray(json.users) ? json.users : [];
+  return (raw as unknown[]).map((item) => {
+    const r = (isObj(item) ? item : {}) as Record<string, unknown>;
+    return {
+      id: String(r.id ?? ""),
+      email: String(r.email ?? ""),
+      display_name: typeof r.display_name === "string" ? r.display_name : null,
+      avatar: typeof r.avatar === "string" ? r.avatar : null,
+      team_name: typeof r.team_name === "string" ? r.team_name : "",
+      paid: Boolean(r.paid),
+      is_active: Boolean(r.is_active),
+      created_at: typeof r.created_at === "string" ? r.created_at : "",
     };
   });
 }

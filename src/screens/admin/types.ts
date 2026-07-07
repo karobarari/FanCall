@@ -28,4 +28,15 @@ export type LeaderboardEntry = {
   rank: number;
 };
 
+export type AdminUserRow = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar: string | null;
+  team_name: string;
+  paid: boolean;
+  is_active: boolean;
+  created_at: string;
+};
+
 export type Load = "loading" | "error" | "ready";

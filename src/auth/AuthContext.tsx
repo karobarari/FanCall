@@ -7,12 +7,14 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { apiGet, apiPost } from '../lib/api';
+import { apiGet, apiPatch, apiPost } from '../lib/api';
 
 export interface User {
   id: string;
   email: string;
   display_name: string | null;
+  // Preset avatar id "<color>-<icon>", or null for the initials fallback.
+  avatar: string | null;
   team_id: string;
   team_name: string;
   paid: boolean;
@@ -25,6 +27,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (fields: { displayName?: string; avatar?: string | null }) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   // Re-checks who's signed in against the session cookie. Used after a flow
   // that sets the cookie outside AuthContext's own login/signup calls — e.g.
   // finishing the OAuth "pick a team" step.
@@ -80,9 +84,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const updateProfile = useCallback(
+    async (fields: { displayName?: string; avatar?: string | null }) => {
+      const { user } = await apiPatch<{ user: User }>('/auth/me', fields);
+      setUser(user);
+    },
+    []
+  );
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    await apiPatch<{ ok: boolean }>('/auth/me/password', { currentPassword, newPassword });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, login, signup, logout, refreshMe }),
-    [user, loading, login, signup, logout, refreshMe]
+    () => ({ user, loading, login, signup, logout, refreshMe, updateProfile, changePassword }),
+    [user, loading, login, signup, logout, refreshMe, updateProfile, changePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

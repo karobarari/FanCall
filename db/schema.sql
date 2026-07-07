@@ -93,7 +93,15 @@ CREATE TABLE public.users (
     email_verified boolean DEFAULT false NOT NULL,
     -- Demo-only payment flag (no real processor until roadmap step 18).
     -- Flipped by POST /api/payment/pay; enforced server-side by requirePaid.
-    paid boolean DEFAULT false NOT NULL
+    paid boolean DEFAULT false NOT NULL,
+    -- Preset avatar id "<color>-<icon>" (validated against the fixed lists in
+    -- server/src/lib/avatar.ts). NULL = no preset chosen; the frontend falls
+    -- back to initials derived from display_name. Not an uploaded image.
+    avatar text,
+    -- Soft-deactivation flag (admin user management, roadmap step 28).
+    -- Blocked at login and excluded from the leaderboard view; predictions
+    -- and scores are left untouched so history isn't lost.
+    is_active boolean DEFAULT true NOT NULL
 );
 
 ALTER TABLE ONLY public.users
@@ -182,7 +190,8 @@ ALTER TABLE ONLY public.scores
 -- call x 3 calls = 12 pts — this covers both "missed a fixture" and "joined
 -- after a fixture was already settled" (same case: no scored row on a
 -- finished fixture). Computed at read time so it reflects settle-and-score
--- immediately. Keep 12 in sync with MISSED in scoring.ts.
+-- immediately. Keep 12 in sync with MISSED in scoring.ts. Deactivated users
+-- (is_active = false, roadmap step 28) are excluded entirely.
 CREATE VIEW public.leaderboard AS
  WITH finished AS (
          SELECT (count(*))::integer AS n
@@ -199,5 +208,6 @@ CREATE VIEW public.leaderboard AS
      LEFT JOIN public.scores s ON (((s.user_id = u.id) AND (s.fixture_id IN ( SELECT fixtures.id
            FROM public.fixtures
           WHERE (fixtures.status = 'finished'::text))))))
+  WHERE u.is_active
   GROUP BY u.id, u.display_name, f.n
   ORDER BY (COALESCE(sum(s.points), (0)::bigint) + (12 * (f.n - count(s.id)))) DESC;
