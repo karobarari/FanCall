@@ -9,6 +9,7 @@ import Login from "./screens/Login";
 import Signup from "./screens/Signup";
 import CompleteSignup from "./screens/CompleteSignup";
 import Payment from "./screens/Payment";
+import PaymentSuccess from "./screens/PaymentSuccess";
 import MakeYourCall from "./screens/MakeYourCall";
 import Leaderboard from "./screens/Leaderboard";
 import Profile from "./screens/Profile";
@@ -31,7 +32,7 @@ function Routed() {
   const { loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-navy text-muted font-sans">
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f4f2] text-[#73726c] font-sans">
         Loading…
       </div>
     );
@@ -67,6 +68,14 @@ function Routed() {
         element={
           <AuthCard>
             <Payment />
+          </AuthCard>
+        }
+      />
+      <Route
+        path="/payment/success"
+        element={
+          <AuthCard>
+            <PaymentSuccess />
           </AuthCard>
         }
       />

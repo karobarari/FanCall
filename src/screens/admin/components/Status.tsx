@@ -1,7 +1,9 @@
+import { SkeletonRows } from "../../../components/Skeleton";
+
 export function Loading({ label }: { label: string }) {
   return (
-    <div className="h-[200px] flex items-center justify-center text-muted text-sm">
-      {label}
+    <div className="min-h-[200px]" aria-label={label}>
+      <SkeletonRows rows={5} />
     </div>
   );
 }

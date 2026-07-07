@@ -6,6 +6,8 @@ export type Fixture = {
   gameweek: number;
   home_team: string;
   away_team: string;
+  home_team_id: string;
+  away_team_id: string;
   kickoff: string;
   home_score: number | null;
   away_score: number | null;

@@ -1,7 +1,8 @@
 import { pool } from '../../db/pool';
 import { HttpError, isUniqueViolation } from '../../lib/errors';
 import { isAdminEmail } from '../../lib/adminEmail';
-import { getPilotTeam } from '../teams/teams.service';
+import { getTeamById } from '../teams/teams.service';
+import { grantEntitlement } from '../payment/payment.service';
 import type { PublicUser } from './auth.service';
 
 export type OAuthProvider = 'google' | 'apple';
@@ -34,7 +35,10 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
   const column = PROVIDER_COLUMN[identity.provider];
 
   const byProvider = await pool.query<Omit<PublicUser, 'is_admin'>>(
-    `select u.id, u.email, u.display_name, u.avatar, u.team_id, t.name as team_name, u.paid
+    `select u.id, u.email, u.display_name, u.avatar, u.team_id,
+            t.name as team_name, t.primary_color as team_primary_color,
+            t.secondary_color as team_secondary_color, t.logo_url as team_logo_url,
+            u.paid
        from users u
        join teams t on t.id = u.team_id
       where u.${column} = $1`,
@@ -45,8 +49,17 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
     return { status: 'logged_in', user: { ...found, is_admin: isAdminEmail(found.email) } };
   }
 
-  const byEmail = await pool.query<{ id: string; team_id: string; team_name: string; paid: boolean }>(
-    `select u.id, u.team_id, t.name as team_name, u.paid
+  const byEmail = await pool.query<{
+    id: string;
+    team_id: string;
+    team_name: string;
+    team_primary_color: string | null;
+    team_secondary_color: string | null;
+    team_logo_url: string | null;
+    paid: boolean;
+  }>(
+    `select u.id, u.team_id, t.name as team_name, t.primary_color as team_primary_color,
+            t.secondary_color as team_secondary_color, t.logo_url as team_logo_url, u.paid
        from users u
        join teams t on t.id = u.team_id
       where lower(u.email) = lower($1)`,
@@ -75,6 +88,9 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
         ...rows[0],
         team_id: byEmail.rows[0].team_id,
         team_name: byEmail.rows[0].team_name,
+        team_primary_color: byEmail.rows[0].team_primary_color,
+        team_secondary_color: byEmail.rows[0].team_secondary_color,
+        team_logo_url: byEmail.rows[0].team_logo_url,
         paid: byEmail.rows[0].paid,
         is_admin: isAdminEmail(rows[0].email),
       },
@@ -86,11 +102,13 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
 
 export interface CompleteOAuthSignupInput extends OAuthIdentity {
   displayName: string;
+  teamId: string;
 }
 
 export async function completeOAuthSignup(input: CompleteOAuthSignupInput): Promise<PublicUser> {
   const column = PROVIDER_COLUMN[input.provider];
-  const team = await getPilotTeam();
+  const team = await getTeamById(input.teamId);
+  if (!team) throw new HttpError(400, 'Unknown team');
   const paid = isAdminEmail(input.email);
 
   try {
@@ -105,7 +123,19 @@ export async function completeOAuthSignup(input: CompleteOAuthSignupInput): Prom
        returning id, email, display_name, avatar`,
       [input.email, input.emailVerified, input.displayName, team.id, paid, input.providerId],
     );
-    return { ...rows[0], team_id: team.id, team_name: team.name, paid, is_admin: isAdminEmail(input.email) };
+    // requireEntitled checks the entitlements table, not users.paid directly
+    // — the admin account needs a real row there too, not just the flag.
+    if (paid) await grantEntitlement(rows[0].id, team.id, 'demo', 'demo', null);
+    return {
+      ...rows[0],
+      team_id: team.id,
+      team_name: team.name,
+      team_primary_color: team.primary_color,
+      team_secondary_color: team.secondary_color,
+      team_logo_url: team.logo_url,
+      paid,
+      is_admin: isAdminEmail(input.email),
+    };
   } catch (err) {
     if (isUniqueViolation(err)) {
       throw new HttpError(409, 'That username is already taken, or the account already exists');

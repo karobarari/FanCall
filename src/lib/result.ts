@@ -1,10 +1,12 @@
 // src/lib/result.ts
-export const CLUB = import.meta.env.VITE_CLUB;
-
 export type MatchResult = "home" | "draw" | "away";
 export type ClubResult = "WIN" | "DRAW" | "LOSE"; // UI labels stay as-is
 
-export const clubIsHome = (fx: { home_team: string }) => fx.home_team === CLUB;
+// Whether the signed-in fan's own club is the home side in this fixture —
+// a runtime comparison against their team_id, not a single build-time
+// VITE_CLUB constant, now that a fan can follow any club.
+export const clubIsHome = (fx: { home_team_id: string }, teamId: string) =>
+  fx.home_team_id === teamId;
 
 // fan's WIN/DRAW/LOSE pick -> canonical result_pred (lowercase, matches DB constraint)
 export function toResultPred(pick: ClubResult, isHome: boolean): MatchResult {

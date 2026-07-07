@@ -63,22 +63,26 @@ export async function requireActive(
   next();
 }
 
-// Gates the paid product (predictions) behind the demo payment step. No
-// real payment processing yet (roadmap step 18) — payment.service.ts just
-// flips users.paid; this middleware is what actually enforces it server-side
-// so the gate can't be skipped by calling the API directly. The admin
-// account is auto-marked paid at signup (see auth.service.ts / oauth.service.ts),
-// so this never blocks admin testing.
-export async function requirePaid(
+// Gates the paid product (predictions) behind an active entitlement —
+// granted by the demo pay endpoint, a redemption code, or a real Stripe
+// payment (checkout/subscription webhook), all of which write to the same
+// entitlements table. This is what actually enforces it server-side so the
+// gate can't be skipped by calling the API directly. The admin account is
+// auto-marked paid at signup (see auth.service.ts / oauth.service.ts) via
+// the demo channel, so this never blocks admin testing.
+export async function requireEntitled(
   req: Request,
   _res: Response,
   next: NextFunction,
 ) {
-  const { rows } = await pool.query<{ paid: boolean }>(
-    "select paid from users where id = $1",
+  const { rows } = await pool.query<{ active: boolean }>(
+    `select e.active
+       from users u
+       join entitlements e on e.user_id = u.id and e.team_id = u.team_id
+      where u.id = $1`,
     [req.userId],
   );
-  if (!rows[0]?.paid) {
+  if (!rows[0]?.active) {
     throw new HttpError(402, "Payment required");
   }
   next();

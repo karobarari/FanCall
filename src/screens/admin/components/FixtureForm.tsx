@@ -138,7 +138,7 @@ export function FixtureForm({
         <button
           onClick={submit}
           disabled={submitting}
-          className="bg-gold text-navy font-semibold rounded-[10px] px-4 py-2.5 text-sm disabled:opacity-60 whitespace-nowrap"
+          className="bg-city-gold text-navy font-semibold rounded-[10px] px-4 py-2.5 text-sm disabled:opacity-60 whitespace-nowrap"
         >
           {submitting ? "Saving\u2026" : submitLabel}
         </button>

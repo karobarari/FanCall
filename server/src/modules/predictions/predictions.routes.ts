@@ -1,18 +1,19 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../middleware/asyncHandler";
-import { requireAuth, requireActive, requirePaid } from "../../middleware/auth";
+import { requireAuth, requireActive, requireEntitled } from "../../middleware/auth";
 import { HttpError } from "../../lib/errors";
 import { listPredictions, upsertPrediction } from "./predictions.service";
 
 export const predictionsRoutes = Router();
 
-// Everything here needs a signed-in, active, paid user — this is the
-// product the demo payment step gates. Checked server-side (not just a
-// frontend redirect) so it can't be bypassed by calling the API directly.
+// Everything here needs a signed-in, active, entitled user — this is the
+// product the payment step (demo, redemption code, or real Stripe) gates.
+// Checked server-side (not just a frontend redirect) so it can't be
+// bypassed by calling the API directly.
 predictionsRoutes.use(requireAuth);
 predictionsRoutes.use(asyncHandler(requireActive));
-predictionsRoutes.use(asyncHandler(requirePaid));
+predictionsRoutes.use(asyncHandler(requireEntitled));
 
 predictionsRoutes.get(
   "/",

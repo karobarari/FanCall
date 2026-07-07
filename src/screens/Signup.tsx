@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import OAuthButtons from "../components/OAuthButtons";
 import ClubBadge from "../components/ClubBadge";
+import { fetchTeams, type Team } from "../lib/teams";
+
+const selectClass =
+  "h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -10,16 +14,31 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [teams, setTeams] = useState<Team[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetchTeams()
+      .then(setTeams)
+      .catch(() => {
+        // Left empty — the picker just shows "Choose your club" with no
+        // options; submit already blocks on an empty teamId either way.
+      });
+  }, []);
 
   if (user) return <Navigate to="/app" replace />;
 
   async function submit() {
     setError(null);
+    if (!teamId) {
+      setError("Choose your club to continue.");
+      return;
+    }
     setBusy(true);
     try {
-      await signup(email, password, displayName);
+      await signup(email, password, displayName, teamId);
       navigate("/app");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -42,6 +61,20 @@ export default function Signup() {
         value={displayName}
         onChange={(e) => setDisplayName(e.target.value)}
       />
+      <select
+        className={selectClass + (teamId ? "" : " text-[#73726c]")}
+        value={teamId}
+        onChange={(e) => setTeamId(e.target.value)}
+      >
+        <option value="" disabled>
+          Choose your club
+        </option>
+        {teams.map((t) => (
+          <option key={t.id} value={t.id} className="text-[#1a1a18]">
+            {t.name}
+          </option>
+        ))}
+      </select>
       <input
         className="h-12 border border-[#e4e3de] rounded-xl px-3.5 text-[15px] text-[#1a1a18] bg-white w-full box-border placeholder:text-[#73726c]"
         placeholder="Email"

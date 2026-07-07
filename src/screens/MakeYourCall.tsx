@@ -11,11 +11,13 @@ import {
   clubIsHome,
   toResultPred,
   toClubResult,
-  CLUB,
   type ClubResult,
 } from '../lib/result';
 import { scorePrediction } from '../lib/scoring';
 import ClubBadge from '../components/ClubBadge';
+import CountUp from '../components/CountUp';
+import { SkeletonRows } from '../components/Skeleton';
+import CrestWatermark from '../components/CrestWatermark';
 
 interface GuideRow {
   icon: string;
@@ -106,23 +108,28 @@ function FixturesColumn({
 
           let badge: ReactNode;
           if (finished) {
-            const pts =
+            const scored =
               pred && f.home_score != null && f.away_score != null
                 ? scorePrediction(pred, {
                     home_score: f.home_score,
                     away_score: f.away_score,
-                  }).points
+                  })
                 : null;
-            badge =
-              pts != null ? (
-                <span className="text-[11px] font-semibold py-1 px-[9px] rounded-full whitespace-nowrap shrink-0 text-gold bg-gold/15">
-                  {pts} pts
+            badge = scored ? (
+              scored.perfect ? (
+                <span className="perfect-badge text-[11px] font-bold py-1 px-[9px] rounded-full whitespace-nowrap shrink-0 text-navy bg-city-gold">
+                  ✨ {scored.points} pts
                 </span>
               ) : (
-                <span className="text-[11px] font-semibold py-1 px-[9px] rounded-full whitespace-nowrap shrink-0 text-muted bg-white/10">
-                  FT
+                <span className="text-[11px] font-semibold py-1 px-[9px] rounded-full whitespace-nowrap shrink-0 text-gold bg-gold/15">
+                  {scored.points} pts
                 </span>
-              );
+              )
+            ) : (
+              <span className="text-[11px] font-semibold py-1 px-[9px] rounded-full whitespace-nowrap shrink-0 text-muted bg-white/10">
+                FT
+              </span>
+            );
           } else if (open) {
             badge = pred ? (
               <span className="text-[11px] font-semibold py-1 px-[9px] rounded-full whitespace-nowrap shrink-0 text-green bg-green/15">
@@ -223,15 +230,17 @@ function Stepper({
 function PredictPanel({
   fixture,
   existing,
+  teamId,
 }: {
   fixture: Fixture;
   existing: Prediction | undefined;
+  teamId: string;
 }) {
   const { savePrediction } = usePredictions();
   const [home, setHome] = useState(existing ? existing.home : 0);
   const [away, setAway] = useState(existing ? existing.away : 0);
   const [result, setResult] = useState<ClubResult | null>(
-    existing ? toClubResult(existing.result_pred, clubIsHome(fixture)) : null,
+    existing ? toClubResult(existing.result_pred, clubIsHome(fixture, teamId)) : null,
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -255,7 +264,7 @@ function PredictPanel({
         fixture.id,
         home,
         away,
-        toResultPred(result, clubIsHome(fixture)),
+        toResultPred(result, clubIsHome(fixture, teamId)),
       );
       setSaved(true);
     } catch (e) {
@@ -294,7 +303,7 @@ function PredictPanel({
       <div className="border-t border-white/10 pt-4 mt-3">
         <h4 className="m-0 text-sm font-semibold">1 · Match result</h4>
         <p className="mt-[3px] mb-3 text-xs text-muted">
-          Will {CLUB ?? fixture.home_team} win, draw, or lose?
+          Will {clubIsHome(fixture, teamId) ? fixture.home_team : fixture.away_team} win, draw, or lose?
         </p>
         <div className="flex gap-2.5">
           {options.map((o) => (
@@ -367,112 +376,60 @@ function PredictPanel({
 }
 
 // --- Right column: scoring guide -------------------------------------------
+// Per-rule accent colours (icon + "+N pts"), independent of the light/dark
+// theme — chosen deliberately saturated enough to read on either. Everything
+// else in this component uses the app's text-ink/text-muted/bg-panel-2
+// tokens instead of literal colours, so it re-themes along with everything
+// else in .theme-light.
+const RULE_ACCENT: Record<GuideRow['color'], string> = {
+  green: '#0d9668',
+  orange: '#dc2626',
+  gold: '#b45309',
+  teal: '#0d9488',
+};
+const RULE_ACCENT_BG: Record<GuideRow['color'], string> = {
+  green: 'rgba(16,185,129,0.15)',
+  orange: 'rgba(239,68,68,0.15)',
+  gold: 'rgba(217,119,6,0.15)',
+  teal: 'rgba(20,184,166,0.15)',
+};
+
 export function ScoringGuide() {
   return (
-    <div style={{ padding: "16px 12px" }}>
+    <div className="p-4 px-3">
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          alignItems: "center",
-          marginBottom: "16px",
-        }}
-      >
-        <span style={{ fontSize: "20px" }}>⚡</span>
-        <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 600 }}>
-          Scoring Guide
-        </h2>
+      <div className="flex gap-2 items-center mb-4">
+        <span className="text-xl">⚡</span>
+        <h2 className="m-0 text-base font-semibold text-ink">Scoring Guide</h2>
       </div>
 
       {/* Guide rows */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div className="flex flex-col gap-3">
         {SCORING_RULES.map((rule) => (
           <div
             key={rule.title}
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "12px",
-              padding: "12px",
-              display: "flex",
-              gap: "12px",
-              alignItems: "flex-start",
-            }}
+            className="bg-panel-2 border border-white/10 rounded-xl p-3 flex gap-3 items-start"
           >
             {/* Icon */}
             <div
-              style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                background:
-                  rule.color === "green"
-                    ? "rgba(16,185,129,0.2)"
-                    : rule.color === "orange"
-                      ? "rgba(239,68,68,0.2)"
-                      : rule.color === "gold"
-                        ? "rgba(217,119,6,0.2)"
-                        : "rgba(20,184,166,0.2)",
-                color:
-                  rule.color === "green"
-                    ? "#10b981"
-                    : rule.color === "orange"
-                      ? "#ef4444"
-                      : rule.color === "gold"
-                        ? "#d97706"
-                        : "#14b8a6",
-                fontSize: "16px",
-              }}
+              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-base"
+              style={{ background: RULE_ACCENT_BG[rule.color], color: RULE_ACCENT[rule.color] }}
             >
               {rule.icon}
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "baseline",
-                  gap: "8px",
-                  marginBottom: "4px",
-                }}
-              >
-                <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 500 }}>
-                  {rule.title}
-                </h3>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-baseline gap-2 mb-1">
+                <h3 className="m-0 text-sm font-medium text-ink">{rule.title}</h3>
                 <span
-                  style={{
-                    color:
-                      rule.color === "green"
-                        ? "#10b981"
-                        : rule.color === "orange"
-                          ? "#ef4444"
-                          : rule.color === "gold"
-                            ? "#fbbf24"
-                            : "#14b8a6",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                  }}
+                  className="text-[13px] font-semibold whitespace-nowrap"
+                  style={{ color: RULE_ACCENT[rule.color] }}
                 >
                   +{rule.points} pts
                 </span>
               </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "13px",
-                  color: "rgba(255,255,255,0.6)",
-                }}
-              >
-                {rule.description}
-              </p>
+              <p className="m-0 text-[13px] text-muted">{rule.description}</p>
             </div>
           </div>
         ))}
@@ -480,71 +437,22 @@ export function ScoringGuide() {
 
       {/* Maximum box — Man City's actual badge gold (#FFC659), since this is
           the one celebratory/bonus highlight on the page. */}
-      <div
-        style={{
-          marginTop: "16px",
-          padding: "16px",
-          border: "2px solid rgba(255,198,89,0.4)",
-          borderRadius: "12px",
-          textAlign: "center",
-          background: "rgba(55,48,44,0.5)",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "12px",
-            color: "rgba(255,255,255,0.5)",
-            marginBottom: "8px",
-            fontWeight: 500,
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-          }}
-        >
+      <div className="mt-4 p-4 rounded-xl text-center border-2 border-city-gold/40 bg-city-gold/10">
+        <div className="text-xs text-muted mb-2 font-medium uppercase tracking-wide">
           Maximum per fixture
         </div>
-        <div
-          style={{
-            fontSize: "32px",
-            fontWeight: 700,
-            color: "#ffc659",
-            marginBottom: "6px",
-          }}
-        >
-          50 pts
-        </div>
-        <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)" }}>
-          3 correct (30) + Perfect Call bonus (20)
-        </div>
+        <div className="text-[32px] font-bold text-city-gold mb-1.5">50 pts</div>
+        <div className="text-xs text-muted">3 correct (30) + Perfect Call bonus (20)</div>
       </div>
 
       {/* Join Anytime explainer */}
-      <div
-        style={{
-          marginTop: "16px",
-          padding: "12px",
-          background: "rgba(20,184,166,0.1)",
-          border: "1px solid rgba(20,184,166,0.3)",
-          borderRadius: "12px",
-          display: "flex",
-          gap: "8px",
-          alignItems: "flex-start",
-        }}
-      >
-        <div style={{ fontSize: "16px", flexShrink: 0 }}>⬆️⬆️</div>
+      <div className="mt-4 p-3 rounded-xl flex gap-2 items-start bg-[#14b8a6]/10 border border-[#14b8a6]/30">
+        <div className="text-base shrink-0">⬆️⬆️</div>
         <div>
-          <div
-            style={{ fontSize: "13px", fontWeight: 600, color: "#14b8a6" }}
-          >
+          <div className="text-[13px] font-semibold" style={{ color: RULE_ACCENT.teal }}>
             Join Anytime
           </div>
-          <p
-            style={{
-              margin: "4px 0 0 0",
-              fontSize: "12px",
-              color: "rgba(255,255,255,0.6)",
-              lineHeight: "1.4",
-            }}
-          >
+          <p className="mt-1 mb-0 text-xs text-muted leading-snug">
             New players automatically receive <strong>12 pts</strong> for every
             fixture missed before joining — keeping you competitive all season.
           </p>
@@ -591,37 +499,38 @@ export default function MakeYourCall() {
   const season = fixtures[0]?.season ?? '2025/26';
 
   if (loading && fixtures.length === 0) {
-    return <div className="p-10 text-muted">Loading fixtures…</div>;
+    return (
+      <div className="bg-panel border border-white/10 rounded-card">
+        <SkeletonRows rows={6} />
+      </div>
+    );
   }
 
   return (
     <div>
-      <header className="flex items-center justify-between gap-6 mb-[26px] flex-wrap">
+      <header className="relative flex items-center justify-between gap-6 mb-[26px] flex-wrap">
+        <CrestWatermark className="w-48 h-48 -top-6 right-4" />
         <div className="flex items-center gap-4">
-          <ClubBadge size={56} />
+          <ClubBadge size={56} logoUrl={user?.team_logo_url} alt={user?.team_name} />
           <div>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.6px] text-ink">
               Make Your Call
             </h1>
             <p className="mt-1 text-faint text-sm">
-              {CLUB ?? 'Your Club'} · {season} · All Fixtures
+              {user?.team_name ?? 'Your Club'} · {season} · All Fixtures
             </p>
           </div>
         </div>
 
         <div className="flex gap-2.5 bg-panel border border-white/10 rounded-card py-3.5 px-2">
           <div className="flex flex-col items-center px-[18px] min-w-[78px] border-l border-white/10 first:border-l-0">
-            <span className="text-[26px] font-bold text-gold leading-[1.1]">
-              {myPoints}
-            </span>
+            <CountUp value={myPoints} className="text-[26px] font-bold text-gold leading-[1.1]" />
             <span className="text-[11px] text-muted mt-1 whitespace-nowrap">
               My Points
             </span>
           </div>
           <div className="flex flex-col items-center px-[18px] min-w-[78px] border-l border-white/10 first:border-l-0">
-            <span className="text-[26px] font-bold text-gold leading-[1.1]">
-              {perfectCalls}
-            </span>
+            <CountUp value={perfectCalls} className="text-[26px] font-bold text-gold leading-[1.1]" />
             <span className="text-[11px] text-muted mt-1 whitespace-nowrap">
               Perfect Calls
             </span>
@@ -650,6 +559,7 @@ export default function MakeYourCall() {
             key={selectedOpen.id}
             fixture={selectedOpen}
             existing={getPrediction(selectedOpen.id)}
+            teamId={user!.team_id}
           />
         ) : (
           <section className="bg-panel border border-white/10 rounded-card p-[18px] flex flex-col items-center justify-center text-center min-h-[280px] gap-2">

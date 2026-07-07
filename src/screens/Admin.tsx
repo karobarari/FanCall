@@ -7,6 +7,7 @@ import { FixturesTab } from "./admin/tabs/FixturesTab";
 import { PlayersTab } from "./admin/tabs/PlayersTab";
 import { TransactionsTab } from "./admin/tabs/TransactionsTab";
 import ClubBadge from "../components/ClubBadge";
+import CrestWatermark from "../components/CrestWatermark";
 
 /* ==================================================================
    Admin dashboard — backed by LIVE data from the API.
@@ -72,7 +73,8 @@ export default function Admin() {
   return (
     <div>
       {/* Header */}
-      <header className="flex items-center justify-between gap-6 mb-6 flex-wrap">
+      <header className="relative flex items-center justify-between gap-6 mb-6 flex-wrap">
+        <CrestWatermark className="w-48 h-48 -top-6 right-4" />
         <div className="flex items-center gap-4">
           <ClubBadge size={56} />
           <div>

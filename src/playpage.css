@@ -25,4 +25,99 @@
   --color-green:     #46c46a;
   --color-flag:      #e0604f;
   --radius-card:     14px;
+  /* Outermost page background, separate from --color-panel (card bg) so a
+     light theme can give the page a soft tint while cards stay pure white
+     for contrast. Defaults to the same dark navy used outside the
+     .theme-light scope below (AppLayout's root wrapper). */
+  --color-surface:   #0d1b36;
+  --skeleton-a: rgba(255, 255, 255, 0.04);
+  --skeleton-b: rgba(255, 255, 255, 0.11);
+}
+
+/* Light theme scope — applied to <main> in AppLayout.tsx so every in-app
+   screen (Make Your Call, Leaderboard, Admin, Profile) re-themes purely by
+   CSS-variable cascade, with no per-component changes needed. The sidebar
+   stays outside this scope and stays dark navy.
+   Colours are pulled straight from Manchester City's own crest (the .st0/
+   .st2/.st6 fills in public/images/Manchester_City_FC_badge.svg: navy
+   #00285E, sky blue #6CADDF, gold #FFC658) rather than a generic light
+   palette, so this reads as "Man City", not just "a light theme".
+   --color-white is overridden too: Tailwind's white/N opacity utilities
+   (border-white/10, bg-white/5, hover:bg-white/10, etc.) resolve through
+   --color-white, so this one line flips every "light-on-dark divider" in
+   the existing markup into a navy-tinted "dark-on-light divider" for free.
+   Anywhere that needs literal opaque white regardless of theme (buttons,
+   the pre-auth screens) uses bg-white/text-white directly, which doesn't
+   route through this token, so those are unaffected. --color-navy is left
+   untouched — text-navy is used throughout as the dark contrast colour on
+   gold buttons/avatars/badges, not as a background, so overriding it would
+   break that instead of helping. --color-gold becomes a punchier, more
+   saturated sky blue than the crest's pale #6CADDF, since the pale version
+   is too low-contrast for small text/badges on a white page. */
+.theme-light {
+  --color-surface:   #eaf4fb;
+  --color-panel:     #ffffff;
+  --color-panel-2:   #e2f0fa;
+  --color-ink:       #00285e;
+  --color-muted:     #3d5578;
+  --color-faint:     #7c8fac;
+  --color-white:     #00285e;
+  --color-gold:      #1f7dbd;
+  --skeleton-a: rgba(0, 40, 94, 0.05);
+  --skeleton-b: rgba(0, 40, 94, 0.12);
+}
+
+/* RYG's own platform identity (navy + orange, from the stakeholder's brand
+   brief) — nested inside .theme-light (e.g. wrapped around the league-wide
+   leaderboard tab in Leaderboard.tsx) so it inherits the light ink/surface
+   tones from there and only overrides the accent + nested-row tint, making
+   a cross-club view read as "the platform's", not any one club's colours. */
+.theme-platform {
+  --color-panel-2: #fbeee1;
+  --color-gold:    #d2691e;
+}
+
+/* Skeleton loading shimmer — a moving highlight sweeping across a muted
+   bar, used in place of plain "Loading…" text while data is in flight. */
+@keyframes shimmer-sweep {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--skeleton-a) 25%,
+    var(--skeleton-b) 37%,
+    var(--skeleton-a) 63%
+  );
+  background-size: 400px 100%;
+  animation: shimmer-sweep 1.4s ease-in-out infinite;
+}
+
+/* Perfect Call celebration — a one-shot pop when the badge first mounts,
+   plus a soft looping glow so a 50-pt perfect call stays noticeable. */
+@keyframes perfect-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes perfect-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 199, 89, 0.5); }
+  50%      { box-shadow: 0 0 12px 3px rgba(255, 199, 89, 0.55); }
+}
+.perfect-badge {
+  animation:
+    perfect-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    perfect-glow 1.8s ease-in-out 0.5s infinite;
+}
+
+/* Rank-change indicator — pops in next to a leaderboard row whose rank
+   moved since the last refresh; the component removes it after a few
+   seconds so it reads as transient, not a permanent UI element. */
+@keyframes rank-pop-in {
+  0%   { transform: translateY(3px) scale(0.8); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.rank-indicator {
+  animation: rank-pop-in 0.25s ease-out both;
 }

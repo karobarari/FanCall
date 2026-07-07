@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import Avatar from "./Avatar";
@@ -29,7 +29,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-navy text-ink font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-surface text-ink font-sans overflow-x-hidden">
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
@@ -59,7 +59,7 @@ export default function AppLayout() {
         `}
       >
         <div className="flex items-center gap-3 pt-14">
-          <ClubBadge size={42} />
+          <ClubBadge size={42} logoUrl={user?.team_logo_url} alt={user?.team_name} />
 
           <div className="flex flex-col leading-[1.2]">
             <span className="font-bold text-base tracking-[0.3px]">
@@ -103,7 +103,7 @@ export default function AppLayout() {
               to="/app/profile"
               className="px-1 leading-[1.3] no-underline hover:opacity-80 flex items-center gap-2.5"
             >
-              <Avatar name={user.display_name ?? user.email} avatar={user.avatar} size={34} />
+              <Avatar name={user.display_name ?? user.email} avatar={user.avatar} size={40} />
               <div>
                 <div className="font-medium text-sm text-ink">{user.display_name}</div>
                 <div className="text-[11px] text-faint uppercase tracking-[0.5px]">
@@ -122,14 +122,28 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content — theme-light re-skins every screen rendered below
+          (via the CSS-variable cascade in playpage.css) to a light theme,
+          while the sidebar above stays dark navy. */}
       <main
         className={`
+          theme-light bg-surface text-ink
           min-h-screen
           transition-all duration-300
           pt-16 px-8
           ${isOpen ? "ml-56" : "ml-0"}
         `}
+        // Per-club branding: only set when the club has actually configured
+        // custom colours (teams.primary_color/secondary_color) — omitting
+        // the property when unset (rather than passing undefined-as-string)
+        // lets .theme-light's own default win, so an unbranded club still
+        // gets the pilot's sky-blue/gold look instead of some empty value.
+        style={{
+          ...(user?.team_primary_color ? { "--color-gold": user.team_primary_color } : {}),
+          ...(user?.team_secondary_color
+            ? { "--color-city-gold": user.team_secondary_color }
+            : {}),
+        } as CSSProperties}
       >
         <Outlet />
       </main>

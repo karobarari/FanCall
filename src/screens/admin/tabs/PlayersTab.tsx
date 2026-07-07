@@ -106,7 +106,7 @@ export function PlayersTab({
             a backend endpoint (e.g. POST /api/admin/users/invite) before enabling this. */}
         <button
           onClick={() => setShowAddInfo((s) => !s)}
-          className="bg-gold text-navy font-semibold rounded-xl px-4 py-3 flex items-center gap-2 whitespace-nowrap"
+          className="bg-city-gold text-navy font-semibold rounded-xl px-4 py-3 flex items-center gap-2 whitespace-nowrap"
         >
           <UserPlus size={16} /> Add New Player
         </button>
@@ -168,7 +168,7 @@ export function PlayersTab({
                     <tr className="border-t border-white/[0.06]">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <Avatar name={name} avatar={u.avatar} size={36} />
+                          <Avatar name={name} avatar={u.avatar} size={44} />
                           <div className="leading-tight">
                             <div className="text-ink font-semibold whitespace-nowrap">{name}</div>
                             <div className="text-faint text-[12px]">{u.email}</div>
@@ -242,7 +242,7 @@ export function PlayersTab({
                             <button
                               onClick={() => saveEdit(u.id)}
                               disabled={editBusy}
-                              className="bg-gold text-navy font-semibold rounded-[10px] px-4 py-2 text-sm disabled:opacity-60"
+                              className="bg-city-gold text-navy font-semibold rounded-[10px] px-4 py-2 text-sm disabled:opacity-60"
                             >
                               {editBusy ? "Saving…" : "Save"}
                             </button>

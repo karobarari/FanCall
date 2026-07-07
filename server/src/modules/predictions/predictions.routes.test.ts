@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
 import request from 'supertest';
-import { app, pool, resetDb, agent } from '../../testUtils';
+import { app, pool, resetDb, agent, getTeamId } from '../../testUtils';
 
 function futureIso(hoursFromNow: number): string {
   return new Date(Date.now() + hoursFromNow * 60 * 60 * 1000).toISOString();
@@ -21,6 +21,12 @@ async function createFixture(
 }
 
 describe('predictions routes (live integration)', () => {
+  let teamId: string;
+
+  beforeAll(async () => {
+    teamId = await getTeamId();
+  });
+
   beforeEach(async () => {
     await resetDb();
   });
@@ -29,18 +35,26 @@ describe('predictions routes (live integration)', () => {
     await pool.end();
   });
 
-  // Predictions require paid = true (see middleware/auth.ts's requirePaid).
-  // These tests are about prediction behavior, not the payment flow itself
-  // (that's payment.routes.test.ts), so mark paid directly via SQL instead
-  // of round-tripping through POST /api/payment/pay every time.
+  // Predictions require an active entitlement (see middleware/auth.ts's
+  // requireEntitled). These tests are about prediction behavior, not the
+  // payment flow itself (that's payment.routes.test.ts), so grant one
+  // directly via SQL instead of round-tripping through POST
+  // /api/payment/pay every time.
   async function newUser(email: string, displayName: string) {
     const client = agent();
     await client.post('/api/auth/signup').send({
       email,
       password: 'correct-horse',
       displayName,
+      teamId,
     });
     await pool.query('update users set paid = true where email = $1', [email]);
+    await pool.query(
+      `insert into entitlements (user_id, team_id, channel, source)
+       select id, team_id, 'demo', 'demo' from users where email = $1
+       on conflict (user_id, team_id) do update set active = true`,
+      [email]
+    );
     return client;
   }
 
@@ -56,6 +70,7 @@ describe('predictions routes (live integration)', () => {
         email: 'unpaid@test.dev',
         password: 'correct-horse',
         displayName: 'unpaid_1',
+        teamId,
       });
       const res = await client.get('/api/predictions');
       expect(res.status).toBe(402);
@@ -99,6 +114,7 @@ describe('predictions routes (live integration)', () => {
         email: 'unpaid@test.dev',
         password: 'correct-horse',
         displayName: 'unpaid_1',
+        teamId,
       });
       const res = await client.post('/api/predictions').send({
         fixture_id: '00000000-0000-0000-0000-000000000000',
@@ -162,10 +178,13 @@ describe('predictions routes (live integration)', () => {
       // Directly seed a fixture with a past kickoff — the create-fixture zod
       // schema doesn't forbid it, and predictions.service checks kickoff at
       // submit time regardless of how the fixture got there.
+      const arsenalId = await getTeamId('Arsenal');
+      const chelseaId = await getTeamId('Chelsea');
       const { rows } = await pool.query<{ id: string }>(
-        `insert into fixtures (season, gameweek, home_team, away_team, kickoff, status)
-         values ('2025/26', 1, 'Arsenal', 'Chelsea', now() - interval '1 hour', 'upcoming')
+        `insert into fixtures (season, gameweek, home_team, away_team, home_team_id, away_team_id, kickoff, status)
+         values ('2025/26', 1, 'Arsenal', 'Chelsea', $1, $2, now() - interval '1 hour', 'upcoming')
          returning id`,
+        [arsenalId, chelseaId],
       );
       const alice = await newUser('alice@test.dev', 'alice_1');
       const res = await alice.post('/api/predictions').send({

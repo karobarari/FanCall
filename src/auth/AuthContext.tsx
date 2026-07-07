@@ -17,6 +17,11 @@ export interface User {
   avatar: string | null;
   team_id: string;
   team_name: string;
+  // Per-club branding — null until an admin sets them for this club, in
+  // which case the app falls back to the pilot's hardcoded defaults.
+  team_primary_color: string | null;
+  team_secondary_color: string | null;
+  team_logo_url: string | null;
   paid: boolean;
   is_admin: boolean;
 }
@@ -25,7 +30,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean; // true while the initial session check is in flight
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, displayName: string) => Promise<void>;
+  signup: (email: string, password: string, displayName: string, teamId: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (fields: { displayName?: string; avatar?: string | null }) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -65,8 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   }, []);
 
-  const signup = useCallback(async (email: string, password: string, displayName: string) => {
-    const { user } = await apiPost<{ user: User }>('/auth/signup', { email, password, displayName });
+  const signup = useCallback(async (email: string, password: string, displayName: string, teamId: string) => {
+    const { user } = await apiPost<{ user: User }>('/auth/signup', { email, password, displayName, teamId });
     setUser(user);
   }, []);
 

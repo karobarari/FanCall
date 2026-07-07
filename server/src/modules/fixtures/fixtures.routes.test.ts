@@ -1,6 +1,8 @@
-import { describe, it, expect, beforeEach, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
 import request from 'supertest';
-import { app, pool, resetDb, agent } from '../../testUtils';
+import { app, pool, resetDb, agent, getTeamId } from '../../testUtils';
+
+let teamId: string;
 
 async function adminAgent() {
   const client = agent();
@@ -8,6 +10,7 @@ async function adminAgent() {
     email: 'admin@test.dev',
     password: 'correct-horse',
     displayName: 'admin_1',
+    teamId,
   });
   return client;
 }
@@ -18,6 +21,7 @@ async function playerAgent() {
     email: 'player@test.dev',
     password: 'correct-horse',
     displayName: 'player_1',
+    teamId,
   });
   return client;
 }
@@ -27,6 +31,10 @@ function futureIso(hoursFromNow: number): string {
 }
 
 describe('fixtures routes (live integration)', () => {
+  beforeAll(async () => {
+    teamId = await getTeamId();
+  });
+
   beforeEach(async () => {
     await resetDb();
   });
@@ -36,8 +44,14 @@ describe('fixtures routes (live integration)', () => {
   });
 
   describe('GET /api/fixtures', () => {
-    it('is public and returns an empty list on a clean DB', async () => {
+    it('rejects an unauthenticated request', async () => {
       const res = await request(app).get('/api/fixtures');
+      expect(res.status).toBe(401);
+    });
+
+    it('returns an empty list on a clean DB', async () => {
+      const admin = await adminAgent();
+      const res = await admin.get('/api/fixtures');
       expect(res.status).toBe(200);
       expect(res.body.fixtures).toEqual([]);
     });
@@ -59,9 +73,39 @@ describe('fixtures routes (live integration)', () => {
         kickoff: futureIso(48),
       });
 
-      const gw1 = await request(app).get('/api/fixtures?gameweek=1');
+      const gw1 = await admin.get('/api/fixtures?gameweek=1');
       expect(gw1.body.fixtures).toHaveLength(1);
       expect(gw1.body.fixtures[0].home_team).toBe('Arsenal');
+    });
+
+    it("scopes a non-admin fan to fixtures their own club is playing in", async () => {
+      const admin = await adminAgent();
+      // Man City (the test team every agent signs up under) vs Chelsea —
+      // the fan's own club is playing.
+      const mine = await admin.post('/api/fixtures').send({
+        season: '2025/26',
+        gameweek: 1,
+        home_team: 'Manchester City',
+        away_team: 'Chelsea',
+        kickoff: futureIso(24),
+      });
+      // Two other clubs neither fan follows.
+      await admin.post('/api/fixtures').send({
+        season: '2025/26',
+        gameweek: 1,
+        home_team: 'Liverpool',
+        away_team: 'Everton',
+        kickoff: futureIso(24),
+      });
+
+      const player = await playerAgent();
+      const res = await player.get('/api/fixtures');
+      expect(res.body.fixtures).toHaveLength(1);
+      expect(res.body.fixtures[0].id).toBe(mine.body.fixture.id);
+
+      // Admin still sees every club's fixtures, for management.
+      const adminView = await admin.get('/api/fixtures');
+      expect(adminView.body.fixtures).toHaveLength(2);
     });
   });
 
@@ -96,6 +140,16 @@ describe('fixtures routes (live integration)', () => {
         away_team: 'Chelsea',
         status: 'upcoming',
       });
+      expect(typeof res.body.fixture.home_team_id).toBe('string');
+      expect(typeof res.body.fixture.away_team_id).toBe('string');
+    });
+
+    it('rejects an unknown team name', async () => {
+      const admin = await adminAgent();
+      const res = await admin
+        .post('/api/fixtures')
+        .send({ ...draft, home_team: 'Not A Real Club' });
+      expect(res.status).toBe(400);
     });
 
     it('rejects identical home and away teams', async () => {

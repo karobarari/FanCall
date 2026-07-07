@@ -1,11 +1,18 @@
-import { describe, it, expect, beforeEach, afterAll } from '@jest/globals';
-import { pool, resetDb } from '../../testUtils';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
+import { pool, resetDb, getTeamId } from '../../testUtils';
 import { HttpError } from '../../lib/errors';
 import { signup } from './auth.service';
-import { PILOT_TEAM_NAME } from '../../config/pilotTeam';
 import { completeOAuthSignup, resolveOAuthLogin } from './oauth.service';
 
 describe('oauth.service (live integration, no HTTP/provider)', () => {
+  let teamId: string;
+  let teamName: string;
+
+  beforeAll(async () => {
+    teamId = await getTeamId();
+    teamName = 'Manchester City';
+  });
+
   beforeEach(async () => {
     await resetDb();
   });
@@ -32,6 +39,7 @@ describe('oauth.service (live integration, no HTTP/provider)', () => {
         email: 'newperson@test.dev',
         emailVerified: true,
         displayName: 'newperson',
+        teamId,
       });
 
       const result = await resolveOAuthLogin({
@@ -44,7 +52,7 @@ describe('oauth.service (live integration, no HTTP/provider)', () => {
     });
 
     it('auto-links to an existing password account when the provider vouches the email', async () => {
-      const existing = await signup('shared@test.dev', 'correct-horse', 'sharedfan');
+      const existing = await signup('shared@test.dev', 'correct-horse', 'sharedfan', teamId);
 
       const result = await resolveOAuthLogin({
         provider: 'google',
@@ -67,7 +75,7 @@ describe('oauth.service (live integration, no HTTP/provider)', () => {
     });
 
     it('refuses to link when the provider does not vouch the email as verified', async () => {
-      await signup('shared@test.dev', 'correct-horse', 'sharedfan');
+      await signup('shared@test.dev', 'correct-horse', 'sharedfan', teamId);
 
       await expect(
         resolveOAuthLogin({
@@ -81,18 +89,19 @@ describe('oauth.service (live integration, no HTTP/provider)', () => {
   });
 
   describe('completeOAuthSignup', () => {
-    it('creates a new account, auto-assigned to the pilot team', async () => {
+    it('creates a new account for the chosen team', async () => {
       const user = await completeOAuthSignup({
         provider: 'apple',
         providerId: 'apple-sub-1',
         email: 'applefan@test.dev',
         emailVerified: true,
         displayName: 'applefan',
+        teamId,
       });
       expect(user).toMatchObject({
         email: 'applefan@test.dev',
         display_name: 'applefan',
-        team_name: PILOT_TEAM_NAME,
+        team_name: teamName,
         is_admin: false,
       });
     });
@@ -104,13 +113,27 @@ describe('oauth.service (live integration, no HTTP/provider)', () => {
         email: 'admin@test.dev',
         emailVerified: true,
         displayName: 'oauthadmin',
+        teamId,
       });
       expect(user.is_admin).toBe(true);
       expect(user.paid).toBe(true);
     });
 
+    it('rejects an unknown team id', async () => {
+      await expect(
+        completeOAuthSignup({
+          provider: 'apple',
+          providerId: 'apple-sub-unknown-team',
+          email: 'noteam@test.dev',
+          emailVerified: true,
+          displayName: 'noteamfan',
+          teamId: '00000000-0000-0000-0000-000000000000',
+        }),
+      ).rejects.toMatchObject({ status: 400 } satisfies Partial<HttpError>);
+    });
+
     it('rejects a username that is already taken', async () => {
-      await signup('first@test.dev', 'correct-horse', 'sharedname');
+      await signup('first@test.dev', 'correct-horse', 'sharedname', teamId);
 
       await expect(
         completeOAuthSignup({
@@ -119,6 +142,7 @@ describe('oauth.service (live integration, no HTTP/provider)', () => {
           email: 'second@test.dev',
           emailVerified: true,
           displayName: 'sharedname',
+          teamId,
         }),
       ).rejects.toMatchObject({ status: 409 } satisfies Partial<HttpError>);
     });

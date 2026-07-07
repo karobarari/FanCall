@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import Avatar from '../components/Avatar';
+import CrestWatermark from '../components/CrestWatermark';
 import {
   AVATAR_COLORS,
   AVATAR_ICONS,
@@ -46,7 +47,7 @@ function AvatarPicker() {
       <h2 className="m-0 mb-3 text-sm font-semibold text-ink">Avatar</h2>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
-          <Avatar name={user.display_name ?? user.email} avatar={selection} size={64} />
+          <Avatar name={user.display_name ?? user.email} avatar={selection} size={80} />
           <p className="text-faint text-[13px] m-0">
             Pick a colour and an icon, or use your initials.
           </p>
@@ -94,7 +95,7 @@ function AvatarPicker() {
 
         <div className="flex gap-2">
           <button
-            className="flex-1 h-11 rounded-xl bg-gold text-navy font-semibold text-[15px] cursor-pointer disabled:opacity-60"
+            className="flex-1 h-11 rounded-xl bg-city-gold text-navy font-semibold text-[15px] cursor-pointer disabled:opacity-60"
             disabled={busy || unchanged}
             onClick={() => save(selection)}
           >
@@ -167,8 +168,9 @@ export default function Profile() {
 
   return (
     <div>
-      <header className="flex items-center gap-4 mb-[26px]">
-        <Avatar name={user.display_name ?? user.email} avatar={user.avatar} size={56} />
+      <header className="relative flex items-center gap-4 mb-[26px]">
+        <CrestWatermark className="w-40 h-40 -top-4 right-4" />
+        <Avatar name={user.display_name ?? user.email} avatar={user.avatar} size={64} />
         <div>
           <h1 className="m-0 text-3xl font-bold tracking-[-0.6px] text-ink">Profile</h1>
           <p className="mt-1 text-faint text-sm">{user.email}</p>
@@ -193,7 +195,7 @@ export default function Profile() {
           {nameError && <p className="text-red-400 text-[13px] m-0">{nameError}</p>}
           {nameSaved && !nameError && <p className="text-green text-[13px] m-0">Username updated.</p>}
           <button
-            className="h-11 rounded-xl bg-gold text-navy font-semibold text-[15px] cursor-pointer disabled:opacity-60"
+            className="h-11 rounded-xl bg-city-gold text-navy font-semibold text-[15px] cursor-pointer disabled:opacity-60"
             disabled={nameBusy || !displayName || displayName === user.display_name}
             onClick={submitName}
           >
@@ -234,7 +236,7 @@ export default function Profile() {
             <p className="text-green text-[13px] m-0">Password updated.</p>
           )}
           <button
-            className="h-11 rounded-xl bg-gold text-navy font-semibold text-[15px] cursor-pointer disabled:opacity-60"
+            className="h-11 rounded-xl bg-city-gold text-navy font-semibold text-[15px] cursor-pointer disabled:opacity-60"
             disabled={passwordBusy || !currentPassword || !newPassword || !confirmPassword}
             onClick={submitPassword}
           >

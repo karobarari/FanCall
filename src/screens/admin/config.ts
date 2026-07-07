@@ -7,7 +7,9 @@ export const API = {
   fixtures: `${API_BASE}/fixtures`, //                 GET -> { fixtures }, POST -> { fixture }
   fixture: (id: string) => `${API_BASE}/fixtures/${id}`, //          PATCH -> { fixture }
   settle: (id: string) => `${API_BASE}/fixtures/${id}/settle`, //    POST  -> { fixture }
-  leaderboard: `${API_BASE}/leaderboard`, //           GET -> { leaderboard }  (path/envelope ASSUMED)
+  // scope=league: admin manages every club, so its leaderboard/stats span
+  // every club's fans rather than being scoped to the admin's own team.
+  leaderboard: `${API_BASE}/leaderboard?scope=league`, //           GET -> { leaderboard }  (path/envelope ASSUMED)
   teams: `${API_BASE}/teams`, //                       GET -> { teams } | string[]  (path ASSUMED)
   users: `${API_BASE}/admin/users`, //                 GET -> { users }
   user: (id: string) => `${API_BASE}/admin/users/${id}`, //         PATCH -> { user }

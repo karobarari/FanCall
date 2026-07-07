@@ -127,7 +127,7 @@ export function FixturesTab({
           </div>
           <button
             onClick={openAdd}
-            className="bg-gold text-navy font-semibold rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 whitespace-nowrap"
+            className="bg-city-gold text-navy font-semibold rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 whitespace-nowrap"
           >
             <CalendarPlus size={16} /> Add fixture
           </button>
@@ -295,7 +295,7 @@ export function FixturesTab({
                             <button
                               onClick={() => saveScore(f.id)}
                               disabled={scoring}
-                              className="bg-gold text-navy font-semibold rounded-[10px] px-4 py-2 text-sm disabled:opacity-60"
+                              className="bg-city-gold text-navy font-semibold rounded-[10px] px-4 py-2 text-sm disabled:opacity-60"
                             >
                               {scoring ? "Saving\u2026" : "Save result"}
                             </button>

@@ -17,6 +17,8 @@ export interface Fixture {
   gameweek: number;
   home_team: string;
   away_team: string;
+  home_team_id: string;
+  away_team_id: string;
   kickoff: string; // ISO string
   home_score: number | null;
   away_score: number | null;
@@ -35,6 +37,10 @@ export interface Standing {
   display_name: string | null;
   total_points: number;
   rank: number;
+  team_id: string;
+  team_name: string;
+  team_logo_url: string | null;
+  avatar: string | null;
 }
 
 interface PredictionRow {

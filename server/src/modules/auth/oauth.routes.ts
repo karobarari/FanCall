@@ -163,12 +163,12 @@ oauthRoutes.post(
 
 const completeBody = z.object({
   display_name: z.string().regex(USERNAME_PATTERN, USERNAME_MESSAGE),
+  team_id: z.string().uuid('Pick a club to continue'),
 });
 
 // POST /api/auth/oauth/complete — the "needs_profile" step: a brand-new
 // OAuth identity has no account yet because users.display_name is required
-// and only the caller knows which name they want (team is auto-assigned to
-// the pilot club — see config/pilotTeam.ts).
+// and only the caller knows which name (and club) they want.
 oauthRoutes.post(
   '/oauth/complete',
   asyncHandler(async (req, res) => {
@@ -193,6 +193,7 @@ oauthRoutes.post(
     const user = await completeOAuthSignup({
       ...pending,
       displayName: parsed.data.display_name,
+      teamId: parsed.data.team_id,
     });
 
     res.clearCookie(PENDING_COOKIE, FLOW_COOKIE_OPTIONS);

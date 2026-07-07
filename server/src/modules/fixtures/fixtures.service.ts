@@ -1,11 +1,13 @@
 import { pool } from "../../db/pool";
 import { HttpError } from "../../lib/errors";
+import { getTeamByName } from "../teams/teams.service";
 
 // ── NEW ──────────────────────────────────────────────────────────
 // The exact column set every fixtures query returns. Centralised so
 // list / settle / create / update can never drift out of shape — the
 // frontend relies on these field names.
-const FIXTURE_COLUMNS = `id, season, gameweek, home_team, away_team, kickoff,
+const FIXTURE_COLUMNS = `id, season, gameweek, home_team, away_team,
+                         home_team_id, away_team_id, kickoff,
                          home_score, away_score, status, locked`;
 
 // Pre-finished status. 'upcoming' is the confirmed canonical value across the
@@ -23,7 +25,10 @@ function isUniqueViolation(err: unknown): boolean {
 }
 // ─────────────────────────────────────────────────────────────────
 
-export async function listFixtures(season?: string, gameweek?: number) {
+// teamId: when given, only fixtures that club is playing in (home OR away —
+// a fixture is visible to both clubs in it, never duplicated). Admin's
+// fixture-management view omits it to see every club's fixtures.
+export async function listFixtures(season?: string, gameweek?: number, teamId?: string) {
   const clauses: string[] = [];
   const params: unknown[] = [];
 
@@ -34,6 +39,10 @@ export async function listFixtures(season?: string, gameweek?: number) {
   if (gameweek !== undefined) {
     params.push(gameweek);
     clauses.push(`gameweek = $${params.length}`);
+  }
+  if (teamId) {
+    params.push(teamId);
+    clauses.push(`(home_team_id = $${params.length} or away_team_id = $${params.length})`);
   }
   const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
 
@@ -90,28 +99,36 @@ export type FixtureInput = {
 // set at creation. Inserting a row is all it takes: it immediately surfaces in
 // predictions, scoring and the leaderboard (fixture-driven architecture).
 //
-// Note: home_team / away_team are free text (schema.sql does not FK them to
-// teams). Fine for the skeleton -- an admin enters known club names. If you want
-// data integrity later, FK them to teams(name) or validate here before insert.
+// home_team/away_team are resolved against teams by name (400 if unknown)
+// and written back as the canonical teams.name — not the raw caller
+// string — alongside the FK, so a casing/typo mismatch can't drift the two
+// apart.
 export async function createFixture(input: FixtureInput) {
+  const homeTeam = await getTeamByName(input.home_team);
+  if (!homeTeam) throw new HttpError(400, `Unknown team "${input.home_team}"`);
+  const awayTeam = await getTeamByName(input.away_team);
+  if (!awayTeam) throw new HttpError(400, `Unknown team "${input.away_team}"`);
+
   try {
     const { rows } = await pool.query(
-      `insert into fixtures (season, gameweek, home_team, away_team, kickoff, status)
-       values ($1, $2, $3, $4, $5, $6)
+      `insert into fixtures (season, gameweek, home_team, away_team, home_team_id, away_team_id, kickoff, status)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)
        returning ${FIXTURE_COLUMNS}`,
       [
         input.season,
         input.gameweek,
-        input.home_team,
-        input.away_team,
+        homeTeam.name,
+        awayTeam.name,
+        homeTeam.id,
+        awayTeam.id,
         input.kickoff,
         NEW_FIXTURE_STATUS,
       ],
     );
     return rows[0];
   } catch (err) {
-    // 23505 = unique_violation. Only fires if you add a unique index on the
-    // fixture identity (see the migration note in the chat).
+    // 23505 = unique_violation — the (season, gameweek, home_team_id,
+    // away_team_id) unique index.
     if (isUniqueViolation(err)) {
       throw new HttpError(409, "That fixture already exists");
     }
@@ -147,8 +164,18 @@ export async function updateFixture(id: string, patch: FixturePatch) {
 
   if (patch.season !== undefined) add("season", patch.season);
   if (patch.gameweek !== undefined) add("gameweek", patch.gameweek);
-  if (patch.home_team !== undefined) add("home_team", patch.home_team);
-  if (patch.away_team !== undefined) add("away_team", patch.away_team);
+  if (patch.home_team !== undefined) {
+    const team = await getTeamByName(patch.home_team);
+    if (!team) throw new HttpError(400, `Unknown team "${patch.home_team}"`);
+    add("home_team", team.name);
+    add("home_team_id", team.id);
+  }
+  if (patch.away_team !== undefined) {
+    const team = await getTeamByName(patch.away_team);
+    if (!team) throw new HttpError(400, `Unknown team "${patch.away_team}"`);
+    add("away_team", team.name);
+    add("away_team_id", team.id);
+  }
   if (patch.kickoff !== undefined) add("kickoff", patch.kickoff);
   if (patch.locked !== undefined) add("locked", patch.locked);
 

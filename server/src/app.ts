@@ -10,7 +10,10 @@ import { predictionsRoutes } from './modules/predictions/predictions.routes';
 import { leaderboardRoutes } from './modules/leaderboard/leaderboard.routes';
 import { teamsRoutes } from './modules/teams/teams.routes';
 import { paymentRoutes } from './modules/payment/payment.routes';
+import { paymentWebhookRoutes } from './modules/payment/webhook.routes';
 import { adminUsersRoutes } from './modules/admin/adminUsers.routes';
+import { clubPlansRoutes } from './modules/billing/clubPlans.routes';
+import { clubOnboardingRoutes } from './modules/admin/clubOnboarding.routes';
 import { notFound, errorHandler } from './middleware/error';
 
 export function createApp() {
@@ -38,7 +41,16 @@ export function createApp() {
   // set moments earlier by us, then exchanges Apple's one-time `code` for
   // tokens server-to-server; a forged form post can't supply a code that
   // exchanges successfully. See oauth.routes.ts for the full reasoning.
+  //
+  // A second, different exception: POST /api/payment/webhook is mounted
+  // below with its own raw-body parser, BEFORE express.json() — Stripe's
+  // payload is itself application/json (unlike Apple's form-post), so it
+  // has to come first or express.json() would consume the raw bytes
+  // signature verification needs. This route also isn't cookie-authenticated
+  // at all — Stripe calls it server-to-server, and the signature check
+  // *is* the auth, so the CSRF reasoning above doesn't apply to it.
   app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
+  app.use('/api/payment/webhook', paymentWebhookRoutes);
   app.use(express.json());
   app.use(cookieParser());
 
@@ -51,6 +63,14 @@ export function createApp() {
   app.use('/api/teams', teamsRoutes);
   app.use('/api/payment', paymentRoutes);
   app.use('/api/admin/users', adminUsersRoutes);
+  // clubOnboardingRoutes first: its /connect/callback route is deliberately
+  // public (Stripe redirects the club's own browser there, not a FanCall
+  // admin session — see that file for why), and clubPlansRoutes has a
+  // blanket requireAuth/requireAdmin .use() that would otherwise intercept
+  // every path under this prefix, including that one, before it ever got a
+  // chance to run.
+  app.use('/api/admin/clubs', clubOnboardingRoutes);
+  app.use('/api/admin/clubs', clubPlansRoutes);
 
   app.use(notFound);
   app.use(errorHandler);

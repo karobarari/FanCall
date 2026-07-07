@@ -104,8 +104,10 @@ describe("settle_fixture (live SQL) — integration", () => {
 
     await pool.query(
       `INSERT INTO fixtures
-         (id, season, gameweek, home_team, away_team, kickoff, status)
+         (id, season, gameweek, home_team, away_team, home_team_id, away_team_id, kickoff, status)
        VALUES ($1, '2025/26', 1, 'Arsenal', 'Chelsea',
+               (SELECT id FROM teams WHERE name = 'Arsenal'),
+               (SELECT id FROM teams WHERE name = 'Chelsea'),
                now() - interval '2 hours', 'upcoming')`,
       [FIXTURE],
     );

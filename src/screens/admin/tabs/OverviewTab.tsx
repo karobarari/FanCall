@@ -23,11 +23,15 @@ import { Loading, ErrorBlock } from "../components/Status";
 import type { Fixture, LeaderboardEntry, Load } from "../types";
 import { truncate } from "../utils";
 
+// recharts takes these as inline JS style/props, not CSS classes, so they
+// can't pick up the .theme-light CSS-variable cascade the rest of the app
+// uses — hardcoded to the light theme's City-navy palette directly.
 const tooltipStyle = {
-  background: "#0b1220",
-  border: "1px solid rgba(255,255,255,0.1)",
+  background: "#ffffff",
+  border: "1px solid rgba(0,40,94,0.12)",
   borderRadius: 10,
   fontSize: 12,
+  boxShadow: "0 4px 16px rgba(0,40,94,0.12)",
 } as const;
 
 export function OverviewTab({
@@ -143,35 +147,35 @@ export function OverviewTab({
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.07)"
+                stroke="rgba(0,40,94,0.08)"
                 vertical={false}
               />
               <XAxis
                 dataKey="name"
                 tickFormatter={truncate}
                 interval={0}
-                tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 11 }}
+                tick={{ fill: "rgba(0,40,94,0.55)", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 domain={[0, "auto"]}
                 width={32}
-                tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 11 }}
+                tick={{ fill: "rgba(0,40,94,0.5)", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                cursor={{ fill: "rgba(0,40,94,0.05)" }}
                 contentStyle={tooltipStyle}
-                labelStyle={{ color: "#9fb0c3" }}
-                itemStyle={{ color: "#e8eef5" }}
+                labelStyle={{ color: "#3d5578" }}
+                itemStyle={{ color: "#00285e" }}
               />
               <Bar dataKey="points" radius={[6, 6, 0, 0]}>
                 {topPlayers.map((p, i) => (
                   <Cell
                     key={p.name}
-                    fill={i === 0 ? "var(--color-gold, #f5a623)" : "rgba(255,255,255,0.16)"}
+                    fill={i === 0 ? "var(--color-gold, #1f7dbd)" : "rgba(0,40,94,0.14)"}
                   />
                 ))}
               </Bar>

@@ -18,6 +18,7 @@ const emailPassword = z.object({
 
 const signupBody = emailPassword.extend({
   displayName: z.string().regex(USERNAME_PATTERN, USERNAME_MESSAGE),
+  teamId: z.string().uuid('Pick a club to continue'),
 });
 
 authRoutes.post(
@@ -28,7 +29,12 @@ authRoutes.post(
     if (!parsed.success) {
       throw new HttpError(400, parsed.error.issues[0]?.message ?? 'Invalid signup');
     }
-    const user = await authService.signup(parsed.data.email, parsed.data.password, parsed.data.displayName);
+    const user = await authService.signup(
+      parsed.data.email,
+      parsed.data.password,
+      parsed.data.displayName,
+      parsed.data.teamId
+    );
     setSession(res, user.id);
     res.status(201).json({ user });
   })

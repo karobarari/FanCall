@@ -1,9 +1,15 @@
-import { describe, it, expect, beforeEach, afterAll } from '@jest/globals';
-import { app, pool, resetDb, agent } from '../../testUtils';
-import { PILOT_TEAM_NAME } from '../../config/pilotTeam';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
+import { app, pool, resetDb, agent, getTeamId } from '../../testUtils';
 import request from 'supertest';
 
 describe('auth routes (live integration)', () => {
+  let teamId: string;
+  const teamName = 'Manchester City';
+
+  beforeAll(async () => {
+    teamId = await getTeamId(teamName);
+  });
+
   beforeEach(async () => {
     await resetDb();
   });
@@ -18,13 +24,14 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
 
       expect(res.status).toBe(201);
       expect(res.body.user).toMatchObject({
         email: 'alice@test.dev',
         display_name: 'alice_1',
-        team_name: PILOT_TEAM_NAME,
+        team_name: teamName,
         paid: false,
         is_admin: false,
       });
@@ -37,6 +44,7 @@ describe('auth routes (live integration)', () => {
         email: 'admin@test.dev',
         password: 'correct-horse',
         displayName: 'admin_1',
+        teamId,
       });
       expect(res.body.user.paid).toBe(true);
       expect(res.body.user.is_admin).toBe(true);
@@ -47,6 +55,7 @@ describe('auth routes (live integration)', () => {
         email: 'not-an-email',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
       expect(res.status).toBe(400);
     });
@@ -56,6 +65,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'short',
         displayName: 'alice_1',
+        teamId,
       });
       expect(res.status).toBe(400);
     });
@@ -67,6 +77,7 @@ describe('auth routes (live integration)', () => {
           email: 'alice@test.dev',
           password: 'correct-horse',
           displayName,
+          teamId,
         });
         expect(res.status).toBe(400);
         expect(res.body.error).toMatch(/username/i);
@@ -78,11 +89,13 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
       const res = await request(app).post('/api/auth/signup').send({
         email: 'alice@test.dev',
         password: 'another-pass',
         displayName: 'alice_2',
+        teamId,
       });
       expect(res.status).toBe(409);
     });
@@ -92,11 +105,13 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
       const res = await request(app).post('/api/auth/signup').send({
         email: 'someoneelse@test.dev',
         password: 'another-pass',
         displayName: 'ALICE_1',
+        teamId,
       });
       expect(res.status).toBe(409);
     });
@@ -108,6 +123,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
     });
 
@@ -117,7 +133,7 @@ describe('auth routes (live integration)', () => {
         .send({ email: 'alice@test.dev', password: 'correct-horse' });
       expect(res.status).toBe(200);
       expect(res.body.user.email).toBe('alice@test.dev');
-      expect(res.body.user.team_name).toBe(PILOT_TEAM_NAME);
+      expect(res.body.user.team_name).toBe(teamName);
       expect(res.body.user.is_admin).toBe(false);
     });
 
@@ -147,6 +163,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
 
       const me = await client.get('/api/auth/me');
@@ -165,6 +182,7 @@ describe('auth routes (live integration)', () => {
         email: 'admin@test.dev',
         password: 'correct-horse',
         displayName: 'admin_1',
+        teamId,
       });
       const me = await client.get('/api/auth/me');
       expect(me.body.user.is_admin).toBe(true);
@@ -183,6 +201,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
 
       const res = await client.patch('/api/auth/me').send({ displayName: 'alice_2' });
@@ -199,6 +218,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
 
       const res = await client.patch('/api/auth/me').send({ displayName: 'ab' });
@@ -210,12 +230,14 @@ describe('auth routes (live integration)', () => {
         email: 'bob@test.dev',
         password: 'correct-horse',
         displayName: 'bob_1',
+        teamId,
       });
       const client = agent();
       await client.post('/api/auth/signup').send({
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
 
       const res = await client.patch('/api/auth/me').send({ displayName: 'BOB_1' });
@@ -228,6 +250,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
 
       const set = await client.patch('/api/auth/me').send({ avatar: 'sky-ball' });
@@ -250,6 +273,7 @@ describe('auth routes (live integration)', () => {
           email: 'alice@test.dev',
           password: 'correct-horse',
           displayName: 'alice_1',
+          teamId,
         });
         const res = await client.patch('/api/auth/me').send({ avatar });
         expect(res.status).toBe(400);
@@ -262,6 +286,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
       const res = await client.patch('/api/auth/me').send({});
       expect(res.status).toBe(400);
@@ -273,6 +298,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
       const res = await client
         .patch('/api/auth/me')
@@ -297,6 +323,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
 
       const res = await client
@@ -321,6 +348,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
 
       const res = await client
@@ -335,6 +363,7 @@ describe('auth routes (live integration)', () => {
         email: 'alice@test.dev',
         password: 'correct-horse',
         displayName: 'alice_1',
+        teamId,
       });
 
       const res = await client

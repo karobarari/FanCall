@@ -30,3 +30,18 @@ process.env.DATABASE_URL = testDatabaseUrl;
 // ADMIN_EMAIL. Tests need a stable, known admin identity that doesn't depend
 // on whatever personal email happens to be in the developer's real .env.
 process.env.ADMIN_EMAIL = "admin@test.dev";
+
+// Fake Stripe config — NOT real credentials, and no test relies on them
+// making a real network call to Stripe's API. They only unlock code paths
+// that are genuinely local:
+//   - stripe.webhooks.constructEvent() verifies a signature via local HMAC,
+//     never touches the network, regardless of whether the secret key is real.
+//   - stripe.oauth.authorizeUrl() is pure URL construction, no network call.
+// Routes that WOULD make a real API call (checkout session creation, the
+// Connect OAuth token exchange) are only ever tested up to the point they'd
+// need to — e.g. /checkout 409s on "club hasn't connected Stripe" before
+// ever reaching a real request, since no team has a stripe_account_id in
+// the test DB.
+process.env.STRIPE_SECRET_KEY = "sk_test_fake_key_for_local_tests_only";
+process.env.STRIPE_WEBHOOK_SECRET = "whsec_fake_test_secret_for_local_signature_tests";
+process.env.STRIPE_CONNECT_CLIENT_ID = "ca_fake_test_connect_client_id";

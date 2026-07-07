@@ -3,6 +3,8 @@ import { z } from "zod";
 import { asyncHandler } from "../../middleware/asyncHandler";
 import { requireAuth, requireAdmin } from "../../middleware/auth";
 import { HttpError } from "../../lib/errors";
+import { isAdminEmail } from "../../lib/adminEmail";
+import { pool } from "../../db/pool";
 import {
   listFixtures,
   settleFixture,
@@ -12,16 +14,30 @@ import {
 
 export const fixturesRoutes = Router();
 
-// GET /api/fixtures?season=2025/26&gameweek=1  (public — drives the play page)
+// GET /api/fixtures?season=2025/26&gameweek=1
+// Scoped to the caller's own club (home OR away — a fixture is visible to
+// both clubs playing in it) so a Man City fan can't spoof Arsenal's list by
+// changing a query param; admin sees every club's fixtures unfiltered, for
+// the fixture-management view.
 fixturesRoutes.get(
   "/",
+  requireAuth,
   asyncHandler(async (req, res) => {
     const season =
       typeof req.query.season === "string" ? req.query.season : undefined;
     const gameweek = req.query.gameweek
       ? Number(req.query.gameweek)
       : undefined;
-    const fixtures = await listFixtures(season, gameweek);
+
+    const { rows } = await pool.query<{ team_id: string; email: string }>(
+      "select team_id, email from users where id = $1",
+      [req.userId],
+    );
+    const caller = rows[0];
+    if (!caller) throw new HttpError(401, "Not authenticated");
+
+    const teamId = isAdminEmail(caller.email) ? undefined : caller.team_id;
+    const fixtures = await listFixtures(season, gameweek, teamId);
     res.json({ fixtures });
   }),
 );

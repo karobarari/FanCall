@@ -34,6 +34,18 @@ const schema = z.object({
   APPLE_KEY_ID: z.string().optional(),
   APPLE_PRIVATE_KEY: z.string().optional(),
   APPLE_REDIRECT_URI: z.string().optional(),
+
+  // Stripe Connect (dashboard.stripe.com -> Developers -> API keys / Connect
+  // settings). Test-mode keys need no business verification and work today;
+  // only switching these to live keys is gated on a real Stripe business
+  // account. All optional, same 503-if-unset behaviour as Google/Apple —
+  // checkout/webhook/Connect routes refuse with 503 until these are set.
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_CONNECT_CLIENT_ID: z.string().optional(),
+  // RYG's cut of a charge when a club has no per-club override
+  // (teams.platform_fee_bps). 3000 = 30%, per the stakeholder's 70/30 split.
+  DEFAULT_PLATFORM_FEE_BPS: z.coerce.number().int().min(0).max(10000).default(3000),
 });
 
 const parsed = schema.safeParse(process.env);

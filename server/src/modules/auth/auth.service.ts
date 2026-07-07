@@ -3,7 +3,8 @@ import { pool } from '../../db/pool';
 import { hashPassword, verifyPassword } from '../../lib/password';
 import { HttpError, isUniqueViolation } from '../../lib/errors';
 import { isAdminEmail } from '../../lib/adminEmail';
-import { getPilotTeam } from '../teams/teams.service';
+import { getTeamById } from '../teams/teams.service';
+import { grantEntitlement } from '../payment/payment.service';
 
 // Bcrypt hash of an arbitrary fixed string, used only so login always pays
 // the cost of a bcrypt.compare — otherwise a nonexistent-email request
@@ -19,15 +20,25 @@ export interface PublicUser {
   avatar: string | null;
   team_id: string;
   team_name: string;
+  // Per-club branding — null until an admin sets them for this club.
+  team_primary_color: string | null;
+  team_secondary_color: string | null;
+  team_logo_url: string | null;
   paid: boolean;
   is_admin: boolean;
 }
 
-export async function signup(email: string, password: string, displayName: string): Promise<PublicUser> {
+export async function signup(
+  email: string,
+  password: string,
+  displayName: string,
+  teamId: string
+): Promise<PublicUser> {
   const existing = await pool.query('select 1 from users where email = $1', [email]);
   if (existing.rowCount) throw new HttpError(409, 'That email is already registered');
 
-  const team = await getPilotTeam();
+  const team = await getTeamById(teamId);
+  if (!team) throw new HttpError(400, 'Unknown team');
   // The admin account never needs to click through the demo payment screen
   // to test settle/predict — everyone else starts unpaid, same as any real
   // signup would.
@@ -46,7 +57,19 @@ export async function signup(email: string, password: string, displayName: strin
        returning id, email, display_name, avatar`,
       [email, hash, displayName, team.id, paid]
     );
-    return { ...rows[0], team_id: team.id, team_name: team.name, paid, is_admin: isAdminEmail(email) };
+    // requireEntitled checks the entitlements table, not users.paid directly
+    // — the admin account needs a real row there too, not just the flag.
+    if (paid) await grantEntitlement(rows[0].id, team.id, 'demo', 'demo', null);
+    return {
+      ...rows[0],
+      team_id: team.id,
+      team_name: team.name,
+      team_primary_color: team.primary_color,
+      team_secondary_color: team.secondary_color,
+      team_logo_url: team.logo_url,
+      paid,
+      is_admin: isAdminEmail(email),
+    };
   } catch (err) {
     if (isUniqueViolation(err)) throw new HttpError(409, 'That username is already taken');
     throw err;
@@ -62,10 +85,16 @@ export async function login(email: string, password: string): Promise<PublicUser
     password_hash: string | null;
     team_id: string;
     team_name: string;
+    team_primary_color: string | null;
+    team_secondary_color: string | null;
+    team_logo_url: string | null;
     paid: boolean;
     is_active: boolean;
   }>(
-    `select u.id, u.email, u.display_name, u.avatar, u.password_hash, u.team_id, t.name as team_name, u.paid, u.is_active
+    `select u.id, u.email, u.display_name, u.avatar, u.password_hash, u.team_id,
+            t.name as team_name, t.primary_color as team_primary_color,
+            t.secondary_color as team_secondary_color, t.logo_url as team_logo_url,
+            u.paid, u.is_active
        from users u
        join teams t on t.id = u.team_id
       where u.email = $1`,
@@ -90,6 +119,9 @@ export async function login(email: string, password: string): Promise<PublicUser
     avatar: user.avatar,
     team_id: user.team_id,
     team_name: user.team_name,
+    team_primary_color: user.team_primary_color,
+    team_secondary_color: user.team_secondary_color,
+    team_logo_url: user.team_logo_url,
     paid: user.paid,
     is_admin: isAdminEmail(user.email),
   };
@@ -148,7 +180,10 @@ export async function changePassword(userId: string, currentPassword: string, ne
 
 export async function getUser(id: string): Promise<PublicUser> {
   const { rows } = await pool.query<Omit<PublicUser, 'is_admin'>>(
-    `select u.id, u.email, u.display_name, u.avatar, u.team_id, t.name as team_name, u.paid
+    `select u.id, u.email, u.display_name, u.avatar, u.team_id,
+            t.name as team_name, t.primary_color as team_primary_color,
+            t.secondary_color as team_secondary_color, t.logo_url as team_logo_url,
+            u.paid
        from users u
        join teams t on t.id = u.team_id
       where u.id = $1`,

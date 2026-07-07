@@ -1,6 +1,8 @@
-import { describe, it, expect, beforeEach, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
 import request from 'supertest';
-import { app, pool, resetDb, agent } from '../../testUtils';
+import { app, pool, resetDb, agent, getTeamId } from '../../testUtils';
+
+let teamId: string;
 
 async function adminAgent() {
   const client = agent();
@@ -8,6 +10,7 @@ async function adminAgent() {
     email: 'admin@test.dev',
     password: 'correct-horse',
     displayName: 'admin_1',
+    teamId,
   });
   return client;
 }
@@ -18,11 +21,16 @@ async function playerAgent(email = 'player@test.dev', displayName = 'player_1') 
     email,
     password: 'correct-horse',
     displayName,
+    teamId,
   });
   return client;
 }
 
 describe('admin users routes (live integration)', () => {
+  beforeAll(async () => {
+    teamId = await getTeamId();
+  });
+
   beforeEach(async () => {
     await resetDb();
   });
@@ -124,7 +132,7 @@ describe('admin users routes (live integration)', () => {
       const userId = me.body.user.id;
 
       // Present on the leaderboard while active.
-      const beforeLb = await request(app).get('/api/leaderboard');
+      const beforeLb = await admin.get('/api/leaderboard?scope=league');
       expect(beforeLb.body.leaderboard.some((r: { user_id: string }) => r.user_id === userId)).toBe(
         true
       );
@@ -136,7 +144,7 @@ describe('admin users routes (live integration)', () => {
       expect(deactivate.body.user.is_active).toBe(false);
 
       // Dropped from the leaderboard.
-      const afterLb = await request(app).get('/api/leaderboard');
+      const afterLb = await admin.get('/api/leaderboard?scope=league');
       expect(afterLb.body.leaderboard.some((r: { user_id: string }) => r.user_id === userId)).toBe(
         false
       );
@@ -159,7 +167,7 @@ describe('admin users routes (live integration)', () => {
         .send({ email: 'player@test.dev', password: 'correct-horse' });
       expect(loginAgain.status).toBe(200);
 
-      const restoredLb = await request(app).get('/api/leaderboard');
+      const restoredLb = await admin.get('/api/leaderboard?scope=league');
       expect(
         restoredLb.body.leaderboard.some((r: { user_id: string }) => r.user_id === userId)
       ).toBe(true);
