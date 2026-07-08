@@ -143,6 +143,11 @@ CREATE TABLE public.users (
     -- server/src/lib/avatar.ts). NULL = no preset chosen; the frontend falls
     -- back to initials derived from display_name. Not an uploaded image.
     avatar text,
+    -- Public path to an uploaded profile picture (server/src/lib/avatarUpload.ts),
+    -- e.g. "/uploads/avatars/<user id>.png?v=<timestamp>". Mutually exclusive
+    -- with `avatar` in practice: setting one clears the other. NULL = no
+    -- upload, falls back to the preset avatar or initials.
+    avatar_url text,
     -- Soft-deactivation flag (admin user management, roadmap step 28).
     -- Blocked at login and excluded from the leaderboard view; predictions
     -- and scores are left untouched so history isn't lost.

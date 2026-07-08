@@ -41,6 +41,7 @@ export interface Standing {
   team_name: string;
   team_logo_url: string | null;
   avatar: string | null;
+  avatar_url: string | null;
 }
 
 interface PredictionRow {

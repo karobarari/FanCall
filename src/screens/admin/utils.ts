@@ -40,6 +40,7 @@ export function pickAdminUsers(json: unknown): AdminUserRow[] {
       email: String(r.email ?? ""),
       display_name: typeof r.display_name === "string" ? r.display_name : null,
       avatar: typeof r.avatar === "string" ? r.avatar : null,
+      avatar_url: typeof r.avatar_url === "string" ? r.avatar_url : null,
       team_name: typeof r.team_name === "string" ? r.team_name : "",
       paid: Boolean(r.paid),
       is_active: Boolean(r.is_active),

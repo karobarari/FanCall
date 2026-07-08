@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { apiGet, apiPatch, apiPost } from '../lib/api';
+import { apiDelete, apiGet, apiPatch, apiPost } from '../lib/api';
 
 export interface User {
   id: string;
@@ -15,6 +15,9 @@ export interface User {
   display_name: string | null;
   // Preset avatar id "<color>-<icon>", or null for the initials fallback.
   avatar: string | null;
+  // Public path to an uploaded profile picture, or null. Takes priority over
+  // `avatar` when rendering — see components/Avatar.tsx.
+  avatar_url: string | null;
   team_id: string;
   team_name: string;
   // Per-club branding — null until an admin sets them for this club, in
@@ -33,6 +36,8 @@ interface AuthContextValue {
   signup: (email: string, password: string, displayName: string, teamId: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (fields: { displayName?: string; avatar?: string | null }) => Promise<void>;
+  uploadAvatar: (file: File) => Promise<void>;
+  deleteAvatar: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   // Re-checks who's signed in against the session cookie. Used after a flow
   // that sets the cookie outside AuthContext's own login/signup calls — e.g.
@@ -41,6 +46,15 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -97,13 +111,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const uploadAvatar = useCallback(async (file: File) => {
+    const dataUrl = await readFileAsDataUrl(file);
+    const { user } = await apiPost<{ user: User }>('/auth/me/avatar', { image: dataUrl });
+    setUser(user);
+  }, []);
+
+  const deleteAvatar = useCallback(async () => {
+    const { user } = await apiDelete<{ user: User }>('/auth/me/avatar');
+    setUser(user);
+  }, []);
+
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     await apiPatch<{ ok: boolean }>('/auth/me/password', { currentPassword, newPassword });
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, login, signup, logout, refreshMe, updateProfile, changePassword }),
-    [user, loading, login, signup, logout, refreshMe, updateProfile, changePassword]
+    () => ({
+      user,
+      loading,
+      login,
+      signup,
+      logout,
+      refreshMe,
+      updateProfile,
+      uploadAvatar,
+      deleteAvatar,
+      changePassword,
+    }),
+    [user, loading, login, signup, logout, refreshMe, updateProfile, uploadAvatar, deleteAvatar, changePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

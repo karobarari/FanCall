@@ -11,6 +11,7 @@ export interface LeaderboardEntry {
   team_name: string;
   team_logo_url: string | null;
   avatar: string | null;
+  avatar_url: string | null;
 }
 
 // Build the leaderboard, scoped to one club or spanning the whole league.
@@ -41,10 +42,11 @@ export async function getLeaderboard(teamId?: string): Promise<LeaderboardEntry[
     team_name: string;
     team_logo_url: string | null;
     avatar: string | null;
+    avatar_url: string | null;
   }>(
     `select l.user_id, l.display_name, l.total_points,
             l.team_id, t.name as team_name, t.logo_url as team_logo_url,
-            u.avatar
+            u.avatar, u.avatar_url
        from leaderboard l
        join teams t on t.id = l.team_id
        join users u on u.id = l.user_id
@@ -72,6 +74,7 @@ export async function getLeaderboard(teamId?: string): Promise<LeaderboardEntry[
       team_name: row!.team_name,
       team_logo_url: row!.team_logo_url,
       avatar: row?.avatar ?? null,
+      avatar_url: row?.avatar_url ?? null,
     };
   });
 }

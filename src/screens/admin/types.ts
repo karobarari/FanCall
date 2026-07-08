@@ -35,6 +35,7 @@ export type AdminUserRow = {
   email: string;
   display_name: string | null;
   avatar: string | null;
+  avatar_url: string | null;
   team_name: string;
   paid: boolean;
   is_active: boolean;

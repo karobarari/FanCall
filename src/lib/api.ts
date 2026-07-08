@@ -36,3 +36,11 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   });
   return handle<T>(res);
 }
+
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return handle<T>(res);
+}

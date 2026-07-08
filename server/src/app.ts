@@ -1,9 +1,12 @@
+import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { env } from './config/env';
+import { AVATAR_UPLOADS_DIR } from './lib/avatarUpload';
 import { authRoutes } from './modules/auth/auth.routes';
+import { avatarUploadRoutes } from './modules/auth/avatarUpload.routes';
 import { oauthRoutes } from './modules/auth/oauth.routes';
 import { fixturesRoutes } from './modules/fixtures/fixtures.routes';
 import { predictionsRoutes } from './modules/predictions/predictions.routes';
@@ -50,9 +53,31 @@ export function createApp() {
   // at all — Stripe calls it server-to-server, and the signature check
   // *is* the auth, so the CSRF reasoning above doesn't apply to it.
   app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
-  app.use('/api/payment/webhook', paymentWebhookRoutes);
-  app.use(express.json());
+  // Moved ahead of the body parsers below: it only reads the Cookie header,
+  // never the body, so it's safe to run before either raw/JSON parsing, and
+  // requireAuth (used by the routes mounted next) depends on it.
   app.use(cookieParser());
+  app.use('/api/payment/webhook', paymentWebhookRoutes);
+  // Its own bigger JSON body limit — see avatarUpload.routes.ts for why this
+  // has to be mounted here, before the global express.json() below.
+  app.use('/api/auth/me/avatar', avatarUploadRoutes);
+  app.use(express.json());
+  // AVATAR_UPLOADS_DIR is the .../uploads/avatars folder; serving its parent
+  // at /uploads keeps the URL shape ("/uploads/avatars/<file>") independent
+  // of exactly which subfolder each upload type lives in.
+  //
+  // helmet()'s default Cross-Origin-Resource-Policy: same-origin would make
+  // the browser block these images when loaded from the frontend's own
+  // origin (e.g. an <img> on localhost:5173 fetching from localhost:3000) —
+  // CORP is enforced by the browser regardless of the CORS headers above.
+  // These files are public avatars with no auth check on read, so opening
+  // them up to cross-origin embedding is safe.
+  app.use(
+    '/uploads',
+    express.static(path.dirname(AVATAR_UPLOADS_DIR), {
+      setHeaders: (res) => res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'),
+    })
+  );
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRoutes);

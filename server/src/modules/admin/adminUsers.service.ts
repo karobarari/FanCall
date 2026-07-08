@@ -6,6 +6,7 @@ export interface AdminUser {
   email: string;
   display_name: string | null;
   avatar: string | null;
+  avatar_url: string | null;
   team_name: string;
   paid: boolean;
   is_active: boolean;
@@ -13,7 +14,7 @@ export interface AdminUser {
 }
 
 const SELECT = `
-  select u.id, u.email, u.display_name, u.avatar, u.paid, u.is_active, u.created_at,
+  select u.id, u.email, u.display_name, u.avatar, u.avatar_url, u.paid, u.is_active, u.created_at,
          t.name as team_name
     from users u
     join teams t on t.id = u.team_id

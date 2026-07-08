@@ -18,6 +18,11 @@ export interface PublicUser {
   display_name: string | null;
   // Preset id "<color>-<icon>" or null (frontend falls back to initials).
   avatar: string | null;
+  // Public path to an uploaded profile picture, or null. Takes priority over
+  // `avatar` in the frontend's Avatar component when both are somehow set —
+  // in practice the two are mutually exclusive, since setting one clears the
+  // other (see updateProfile / setAvatarUrl below).
+  avatar_url: string | null;
   team_id: string;
   team_name: string;
   // Per-club branding — null until an admin sets them for this club.
@@ -62,6 +67,7 @@ export async function signup(
     if (paid) await grantEntitlement(rows[0].id, team.id, 'demo', 'demo', null);
     return {
       ...rows[0],
+      avatar_url: null, // brand new account, nothing uploaded yet
       team_id: team.id,
       team_name: team.name,
       team_primary_color: team.primary_color,
@@ -82,6 +88,7 @@ export async function login(email: string, password: string): Promise<PublicUser
     email: string;
     display_name: string | null;
     avatar: string | null;
+    avatar_url: string | null;
     password_hash: string | null;
     team_id: string;
     team_name: string;
@@ -91,7 +98,7 @@ export async function login(email: string, password: string): Promise<PublicUser
     paid: boolean;
     is_active: boolean;
   }>(
-    `select u.id, u.email, u.display_name, u.avatar, u.password_hash, u.team_id,
+    `select u.id, u.email, u.display_name, u.avatar, u.avatar_url, u.password_hash, u.team_id,
             t.name as team_name, t.primary_color as team_primary_color,
             t.secondary_color as team_secondary_color, t.logo_url as team_logo_url,
             u.paid, u.is_active
@@ -117,6 +124,7 @@ export async function login(email: string, password: string): Promise<PublicUser
     email: user.email,
     display_name: user.display_name,
     avatar: user.avatar,
+    avatar_url: user.avatar_url,
     team_id: user.team_id,
     team_name: user.team_name,
     team_primary_color: user.team_primary_color,
@@ -143,6 +151,9 @@ export async function updateProfile(userId: string, fields: ProfileUpdate): Prom
   if (fields.avatar !== undefined) {
     values.push(fields.avatar);
     sets.push(`avatar = $${values.length}`);
+    // Picking a preset (or reverting to initials) supersedes any uploaded
+    // photo — the two are mutually exclusive, whichever was set last wins.
+    sets.push('avatar_url = null');
   }
   if (!sets.length) throw new HttpError(400, 'Nothing to update');
 
@@ -157,6 +168,18 @@ export async function updateProfile(userId: string, fields: ProfileUpdate): Prom
     if (isUniqueViolation(err)) throw new HttpError(409, 'That username is already taken');
     throw err;
   }
+  return getUser(userId);
+}
+
+// Sets (or clears, when url is null) the uploaded-photo path, superseding
+// any preset avatar the same way updateProfile's preset path supersedes an
+// uploaded photo — only one is ever "current".
+export async function setAvatarUrl(userId: string, url: string | null): Promise<PublicUser> {
+  const { rowCount } = await pool.query(
+    'update users set avatar_url = $1, avatar = null where id = $2',
+    [url, userId]
+  );
+  if (!rowCount) throw new HttpError(404, 'User not found');
   return getUser(userId);
 }
 
@@ -180,7 +203,7 @@ export async function changePassword(userId: string, currentPassword: string, ne
 
 export async function getUser(id: string): Promise<PublicUser> {
   const { rows } = await pool.query<Omit<PublicUser, 'is_admin'>>(
-    `select u.id, u.email, u.display_name, u.avatar, u.team_id,
+    `select u.id, u.email, u.display_name, u.avatar, u.avatar_url, u.team_id,
             t.name as team_name, t.primary_color as team_primary_color,
             t.secondary_color as team_secondary_color, t.logo_url as team_logo_url,
             u.paid

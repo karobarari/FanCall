@@ -168,7 +168,7 @@ export function PlayersTab({
                     <tr className="border-t border-white/[0.06]">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <Avatar name={name} avatar={u.avatar} size={44} />
+                          <Avatar name={name} avatar={u.avatar} avatarUrl={u.avatar_url} size={44} />
                           <div className="leading-tight">
                             <div className="text-ink font-semibold whitespace-nowrap">{name}</div>
                             <div className="text-faint text-[12px]">{u.email}</div>

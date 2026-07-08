@@ -103,7 +103,12 @@ export default function AppLayout() {
               to="/app/profile"
               className="px-1 leading-[1.3] no-underline hover:opacity-80 flex items-center gap-2.5"
             >
-              <Avatar name={user.display_name ?? user.email} avatar={user.avatar} size={40} />
+              <Avatar
+                name={user.display_name ?? user.email}
+                avatar={user.avatar}
+                avatarUrl={user.avatar_url}
+                size={40}
+              />
               <div>
                 <div className="font-medium text-sm text-ink">{user.display_name}</div>
                 <div className="text-[11px] text-faint uppercase tracking-[0.5px]">

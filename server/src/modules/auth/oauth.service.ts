@@ -35,7 +35,7 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
   const column = PROVIDER_COLUMN[identity.provider];
 
   const byProvider = await pool.query<Omit<PublicUser, 'is_admin'>>(
-    `select u.id, u.email, u.display_name, u.avatar, u.team_id,
+    `select u.id, u.email, u.display_name, u.avatar, u.avatar_url, u.team_id,
             t.name as team_name, t.primary_color as team_primary_color,
             t.secondary_color as team_secondary_color, t.logo_url as team_logo_url,
             u.paid
@@ -77,9 +77,10 @@ export async function resolveOAuthLogin(identity: OAuthIdentity): Promise<OAuthL
       email: string;
       display_name: string | null;
       avatar: string | null;
+      avatar_url: string | null;
     }>(
       `update users set ${column} = $1, email_verified = true where id = $2
-       returning id, email, display_name, avatar`,
+       returning id, email, display_name, avatar, avatar_url`,
       [identity.providerId, byEmail.rows[0].id],
     );
     return {
@@ -128,6 +129,7 @@ export async function completeOAuthSignup(input: CompleteOAuthSignupInput): Prom
     if (paid) await grantEntitlement(rows[0].id, team.id, 'demo', 'demo', null);
     return {
       ...rows[0],
+      avatar_url: null, // brand new account, nothing uploaded yet
       team_id: team.id,
       team_name: team.name,
       team_primary_color: team.primary_color,

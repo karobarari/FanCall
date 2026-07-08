@@ -176,7 +176,12 @@ export default function Leaderboard() {
                       {Math.abs(delta)}
                     </span>
                   )}
-                  <Avatar name={r.display_name ?? 'Unknown'} avatar={r.avatar} size={34} />
+                  <Avatar
+                    name={r.display_name ?? 'Unknown'}
+                    avatar={r.avatar}
+                    avatarUrl={r.avatar_url}
+                    size={34}
+                  />
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-medium truncate">
                       {r.display_name ?? 'Unknown'}
