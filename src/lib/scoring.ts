@@ -25,11 +25,3 @@ export function scorePrediction(
   };
 }
 
-// Credit for a finished fixture with no prediction submitted.
-// 4 points per call × 3 calls (result, home, away). No perfect bonus.
-// Covers both "Missed Fixture" (existing player didn't predict) and
-// "Join Anytime" (player joined after the fixture finished).
-// NOTE: 12 sits intentionally BELOW the 15-point floor of scorePrediction —
-// not predicting should score worse than predicting everything wrong.
-// Do not "fix" this to 15.
-export const MISSED_FIXTURE_POINTS = 12;

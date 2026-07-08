@@ -394,7 +394,7 @@ const RULE_ACCENT_BG: Record<GuideRow['color'], string> = {
   teal: 'rgba(20,184,166,0.15)',
 };
 
-export function ScoringGuide() {
+function ScoringGuide() {
   return (
     <div className="p-4 px-3">
       {/* Header */}

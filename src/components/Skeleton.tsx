@@ -1,6 +1,6 @@
 // A shimmering placeholder bar — see the `.skeleton` shimmer-sweep
 // animation in playpage.css. Used in place of plain "Loading…" text.
-export default function Skeleton({ className = '' }: { className?: string }) {
+function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`skeleton rounded-md ${className}`} />;
 }
 
