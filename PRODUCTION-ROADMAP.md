@@ -29,6 +29,14 @@ something only you can provide, do everything in my power and hand you the rest)
 - **Step 16 — privacy/terms/data-protection (UK GDPR).** Required before a public
   launch that collects real user data.
 
+> ⚠️ **Note (2026-07-08):** Step 18 (Stripe Connect payments) is now code-complete
+> — checkout, destination charges, webhook-driven entitlements are all built —
+> ahead of Steps 15–17 being cleared. This is fine for continued local/dev/demo
+> use (Stripe keys are unset, so it degrades to the `demo`/redemption-code paths),
+> but **do not put live Stripe keys into a public deployment** until the GDPR
+> docs (15/16) and, if any club attaches prizes to the leaderboard, the gambling
+> opinion (17) are actually signed off.
+
 ---
 
 ## At a glance
@@ -36,14 +44,14 @@ something only you can provide, do everything in my power and hand you the rest)
 | # | Step | Owner | Phase |
 |---|------|-------|-------|
 | 1 | Backend data foundation (teams, usernames, team_id) | ✅ | A |
-| 2 | Backend API — teams + signup(username, team) + login/me | 🤖 | A |
-| 3 | Frontend — login/signup split, username, team picker | 🤖 | A |
-| 4 | Admin settle UI (+ admin fixture entry) | 🤖 | A |
-| 5 | Cleanup & correctness pass | 🤖 | A |
-| 6 | Security hardening (rate-limit, headers, validation, cookies) | 🤖 | B |
+| 2 | Backend API — teams + signup(username, team) + login/me | ✅ | A |
+| 3 | Frontend — login/signup split, username, team picker | ✅ | A |
+| 4 | Admin settle UI (+ admin fixture entry) | ✅ | A |
+| 5 | Cleanup & correctness pass | ✅ | A |
+| 6 | Security hardening (rate-limit, headers, validation, cookies) | ✅ | B |
 | 7 | Email service + email verification | 🔑 | B |
 | 8 | Password reset | 🤖 | B |
-| 9 | Test & CI coverage | 🤖 | B |
+| 9 | Test & CI coverage | ✅ | B |
 | 10 | Managed Postgres provisioned + schema/migrations applied | 🔑 | C |
 | 11 | Backend hosting + secrets + prod CORS/cookies | 🔑 | C |
 | 12 | Frontend on Vercel + custom domain + SSL | 🔑 | C |
@@ -52,15 +60,15 @@ something only you can provide, do everything in my power and hand you the rest)
 | 15 | Legal/policy docs — privacy, terms, cookies (UK GDPR) | 👤 | D |
 | 16 | ⚠️ Public-launch compliance gate (GDPR sign-off) | 👤 | D |
 | 17 | ⚠️ Gambling/prize-competition legal opinion | 👤 | D |
-| 18 | Payments — Stripe subscriptions, checkout, webhooks | 🔑 | E |
+| 18 | Payments — Stripe Connect checkout + webhooks | ✅ (code) / 🔑 (live keys) | E |
 | 19 | Refunds + billing self-service | 🔑 | E |
-| 20 | Subscription entitlement gating in app | 🤖 | E |
-| 21 | Multi-club isolation (scope data by team) | 🤖 | F |
-| 22 | Per-club branding / white-label theming | 🔑 | F |
-| 23 | Google / Apple OAuth | 🔑 | F |
+| 20 | Subscription entitlement gating in app | ✅ | E |
+| 21 | Multi-club isolation (scope data by team) | ✅ | F |
+| 22 | Per-club branding / white-label theming | ✅ | F |
+| 23 | Google / Apple OAuth | ✅ Google / 🔑 Apple | F |
 | 24 | Automated fixtures + results feed → auto-settle | 🔑 | F |
 | 25 | Notifications (reminders / results) | 🔑 | F |
-| 26 | Mobile / responsive po
+| 26 | Mobile / responsive polish | ✅ | F |
 | 27 | User profile self-service (username, password, avatar) | ✅ | A |
 | 28 | Admin user management (edit / deactivate users) | ✅ | A |
 
@@ -71,46 +79,31 @@ something only you can provide, do everything in my power and hand you the rest)
 Teams table seeded with the 2026/27 PL, `users.team_id` (NOT NULL FK), usernames
 required + case-insensitively unique. Schema + migration, verified on Postgres 16.
 
-### 2. Backend API — teams, signup, login/me — 🤖 (S/M)
-**Goal:** expose the data foundation to the app.
-**Touches:** new `modules/teams/*` (`GET /api/teams`); `auth.routes.ts` +
-`auth.service.ts` (signup takes `{ email, password, username, team_id }` with
-validation — username format 3–20 chars `[a-zA-Z0-9_]`, 409 on duplicate, 400 on
-bad team); `login` and `/me` responses include the user's team.
-**Depends on:** 1.
-**Verify:** `tsc` clean; Thunder Client run of signup (valid + each failure mode),
-login, `/me`, `GET /teams`.
+### 2. Backend API — teams, signup, login/me — ✅ DONE
+`GET /api/teams`, `auth.routes.ts`/`auth.service.ts` signup taking
+`{ email, password, username, team_id }` (username 3–20 chars
+`[a-zA-Z0-9_]`, 409 on duplicate, 400 on bad team), and `login`/`/me`
+responses carrying the user's team. Superseded in scope by Step 21 — teams
+are now real Premier League clubs, not just the Man City pilot.
 
-### 3. Frontend — login/signup split + team picker — 🤖 (M)
-**Goal:** the onboarding you described.
-**Touches:** split `screens/Login.tsx` into `/login` (email+password) and
-`/signup` (email, password, username, team picker), links each way; update
-`App.tsx` routing; `AuthContext.signup` signature; fetch `GET /teams` for the
-picker; surface the chosen club in the app shell.
-**Depends on:** 2.
-**Verify:** `tsc -b && vite build`; manual run of the full
-login→signup→username→team→predict flow.
+### 3. Frontend — login/signup split + team picker — ✅ DONE
+`/login` (email+password) and `/signup` (email, password, username, team
+picker) as separate routes, `AuthContext.signup` wired to `GET /teams`,
+chosen club surfaced through the app shell (sidebar crest/name, per-club
+theme colours).
 
-### 4. Admin settle UI (+ fixture entry) — 🤖 (M)
-**Goal:** kill the last curl-only path; let an admin run the game from the browser.
-**Touches:** rebuild `screens/Admin.tsx` into a real dashboard — list fixtures,
-enter a result and settle (POSTs the existing settle route), and a simple
-**create-fixture** form (so fixtures stop being hand-written SQL). Wire the
-store's `refresh()` so totals update without a reload. Backend may need a small
-`POST /api/fixtures` (admin-only) for fixture creation.
-**Depends on:** 2 (admin/auth shape).
-**Verify:** `tsc`; create a fixture, predict on it, settle it, see the leaderboard
-move — all in the browser.
+### 4. Admin settle UI (+ fixture entry) — ✅ DONE
+`screens/admin/*` is a real tabbed dashboard (fixtures, players, overview) —
+list fixtures, enter a result and settle, create a fixture from a form
+instead of hand-written SQL, plus lock/unlock individual fixtures
+(`dac0078`) so a fixture can be frozen ahead of kickoff without settling it.
 
-### 5. Cleanup & correctness pass — 🤖 (S)
-**Goal:** clear the known debt so production starts clean.
-**Touches:** delete dead `screens/Fixtures.tsx`; resolve `components/ScoringGuide.tsx`
-(promote it to one shared guide that includes the missed/join rows the live one
-omits); remove the `console.log` in `upsertPrediction`; fold the missed-credit
-`leaderboard` view into `schema.sql` (end the view-drift); drop the unused
-`hasPrediction` export if still unused.
-**Depends on:** ideally after 3–4 so nothing in flight references removed code.
-**Verify:** `tsc -b && vite build`; existing tests still green.
+### 5. Cleanup & correctness pass — ✅ DONE
+Dead `screens/Fixtures.tsx` removed, `hasPrediction` export gone, no stray
+`console.log` in the prediction path. Continued as an ongoing habit rather
+than a one-off: `9f99619` removed further dead exports
+(`MISSED_FIXTURE_POINTS`, unused `Skeleton`/`ScoringGuide` exports) after
+the multi-club rework left them unreferenced.
 
 ### 27. User profile self-service — ✅ DONE
 `PATCH /api/auth/me` (username, plus a preset avatar — `"<color>-<icon>"`,
@@ -142,16 +135,14 @@ dev DB).
 # Phase B — Harden for real users
 *Goal: safe to put in front of strangers.*
 
-### 6. Security hardening — 🤖 (M)
-**Goal:** baseline production security.
-**Touches:** rate-limiting on auth endpoints (`express-rate-limit`); security
-headers (`helmet`); tighten CORS to the real origin(s); confirm cookie flags
-(`httpOnly` ✓, `secure`+`sameSite=none` in prod ✓ — validate against the real
-deployed domains); request-size limits; consistent input validation; ensure no
-stack traces leak in prod errors.
-**Depends on:** none (can run anytime); best confirmed against real domains (11–12).
-**Verify:** `tsc`; manual abuse tests (rapid login attempts throttled, headers
-present, oversized body rejected).
+### 6. Security hardening — ✅ DONE
+Rate-limiting on auth endpoints (`express-rate-limit`), `helmet` security
+headers, CORS locked to the configured origin, cookie flags (`httpOnly`,
+`secure`+`sameSite=none` in prod), request-size limits, JWT/timing hardening
+(`834c7a5`). CSRF posture documented in `c7e1a3e` (why `sameSite=none` +
+strict CORS is safe here). **Still to confirm:** the cookie/CORS settings
+against real deployed domains once Steps 11–12 stand up hosting — localhost
+testing can't fully exercise cross-domain cookie behaviour.
 
 ### 7. Email service + email verification — 🔑 (M)
 **Goal:** verified email addresses; foundation for resets/notifications.
@@ -171,13 +162,13 @@ verified status (your call how strict).
 **Depends on:** 7 (uses the email service).
 **Verify:** full reset round-trip on staging; token expiry/reuse rejected.
 
-### 9. Test & CI coverage — 🤖 (S/M)
-**Goal:** the green-build safety net you rely on stays meaningful.
-**Touches:** add API integration tests for the new auth/teams/admin routes;
-optional Playwright smoke test of the core flow; GitHub Actions running `tsc`,
-tests, and build on every push.
-**Depends on:** 2–5.
-**Verify:** CI green on a PR.
+### 9. Test & CI coverage — ✅ DONE
+API integration tests across auth, teams, admin, fixtures, predictions,
+leaderboard, and payment/webhook modules (a `*.routes.test.ts` next to every
+route module); GitHub Actions (`.github/workflows/ci.yml`) running `tsc`,
+tests, and build on every push (`296ec68`). **Not done:** a Playwright
+end-to-end smoke test of the full browser flow — coverage today is API-level,
+not UI-level.
 
 ---
 
@@ -271,53 +262,65 @@ terms).
 
 # Phase E — Monetization (gated by Step 17)
 
-### 18. Payments — Stripe subscriptions — 🔑 (L)
-**You unlock:** a Stripe account + keys; decide the pricing tiers/trial.
-**Touches:** Stripe Checkout / Billing; `subscriptions` table; webhook handler
-(`checkout.session.completed`, `invoice.paid`, `customer.subscription.*`) as the
-source of truth for entitlement; secure webhook signature verification.
-**Depends on:** 17, 11.
-**Verify:** test-mode subscribe → webhook flips entitlement → expiry revokes it.
+### 18. Payments — Stripe Connect — ✅ CODE DONE / 🔑 needs live keys
+**Built ahead of Step 17** (see the gate note above) as part of the
+multi-club pivot (`34ffa27`) — actual scope differs from the original plan
+(destination-charge Connect, not plain subscriptions-only): Stripe Checkout,
+Connect OAuth (`stripe.service.ts`) with a 70/30 platform fee split, webhook
+handler (`checkout.session.completed`, `invoice.paid`,
+`customer.subscription.updated/deleted`) driving an `entitlements` table as
+the source of truth, plus a non-Stripe **redemption-code** fallback for
+clubs selling season-ticket bundles outside the app. `STRIPE_SECRET_KEY` /
+`STRIPE_WEBHOOK_SECRET` / `STRIPE_CONNECT_CLIENT_ID` are optional env vars —
+unset, the app degrades to the `demo` entitlement channel, so this is safe
+to leave un-configured until you're ready to take real money.
+**You still unlock:** a Stripe account + live/test keys, and a decision on
+per-club pricing, before any real charge can happen.
 
 ### 19. Refunds + billing self-service — 🔑 (M)
 **Touches:** Stripe Customer Portal (cancel/update card/invoices); refund handling
-+ the webhooks that revoke access; dunning for failed payments.
++ the webhooks that revoke access; dunning for failed payments. **Not started** —
+`charge.refunded` isn't handled yet; cancellation today only flows through
+`customer.subscription.deleted`.
 **Depends on:** 18.
 **Verify:** test refund/cancel revokes access correctly.
 
-### 20. Subscription entitlement gating — 🤖 (M)
-**Touches:** middleware that checks subscription status for paid features; frontend
-paywall/upgrade states; graceful handling of lapsed accounts.
-**Depends on:** 18.
-**Verify:** paid routes blocked without an active sub; allowed with one.
+### 20. Subscription entitlement gating — ✅ DONE
+`requireEntitled` middleware (mirroring `requireActive`) gates the
+predictions routes on an active `entitlements` row; `payment.service.ts`
+grants/revokes entitlements from the demo, redemption-code, and Stripe
+webhook paths alike so all three stay consistent.
 
 ---
 
 # Phase F — Scale to the business model & enhancements
 *Mostly independent of each other; sequence to taste.*
 
-### 21. Multi-club isolation — 🤖 (L)
-**Goal:** the back half of the original Path A — what lets you sell separate
-club-branded instances. Scope fixtures, predictions, and leaderboards by
-`team_id` so each club is its own world.
-**Touches:** `team_id` on fixtures (and the queries that read them); every
-fixtures/predictions/leaderboard query filtered by the user's club; admin scoped
-per club. **Required before onboarding a second club.**
-**Depends on:** 1 (the `team_id` key is already in place).
-**Verify:** two clubs' data provably can't see each other; leaderboards separate.
+### 21. Multi-club isolation — ✅ DONE
+Landed in `34ffa27`, ahead of schedule (was gated on Phase E in the original
+plan; shipped alongside it instead). Fans pick a real Premier League club at
+signup; fixtures, predictions, and per-club leaderboards are scoped by
+`team_id` (`2026-07-08-fixtures-team-fk.sql`); a second **league-wide**
+leaderboard spans every club (`2026-07-08-dual-leaderboard.sql`) with its
+own navy/orange identity distinct from club branding. Admin actions remain
+scoped per club.
 
-### 22. Per-club branding / white-label — 🔑 (M)
-**You unlock:** each club's colours/logo/assets.
-**Touches:** theme tokens per club (the Tailwind `@theme` setup already isolates
-colours well); club logo/name throughout; per-club config.
-**Depends on:** 21.
+### 22. Per-club branding / white-label — ✅ DONE
+Theme tokens flow per-club through `teams.primary_color`/`secondary_color`
+(`AppLayout.tsx` sets CSS custom properties per logged-in user's club, only
+overriding the pilot's default sky-blue/gold when a club has actually
+configured colours), plus the real Man City crest (`9112edd`) and a
+`ClubBadge` component used throughout. **Still open:** this covers colour
+tokens and the crest; a club supplying genuinely custom assets/copy beyond
+what the schema already models would still need bespoke work.
 
-### 23. Google / Apple OAuth — 🔑 (M)
-**You unlock:** Google OAuth credentials; an **Apple Developer account** ($99/yr)
-for Sign in with Apple.
-**Touches:** OAuth flow alongside email/password; link/merge to existing accounts;
-the "Continue with…" buttons we deliberately left out.
-**Depends on:** 2.
+### 23. Google / Apple OAuth — ✅ Google DONE / 🔑 Apple still needs unlocking
+`b5530ba` added the OAuth flow (`oauth.routes.ts`/`oauth.service.ts`) with
+account linking, "Continue with…" buttons, and graceful 503s when a
+provider's env vars are unset. Google is configured and live. Apple's code
+path is complete but disabled — it needs a paid **Apple Developer account**
+($99/yr) plus `APPLE_CLIENT_ID`/`APPLE_TEAM_ID`/`APPLE_KEY_ID`/
+`APPLE_PRIVATE_KEY` before it can go live (see `server/.env.example`).
 
 ### 24. Automated fixtures + results → auto-settle — 🔑 (M/L)
 **Goal:** stop entering fixtures/results by hand.
@@ -325,18 +328,19 @@ the "Continue with…" buttons we deliberately left out.
 I'll compare cost/coverage).
 **Touches:** scheduled ingestion of fixtures; results polling that calls
 `settle_fixture` automatically; reconciliation/override in admin.
-**Depends on:** 4.
+**Depends on:** 4. **Not started** — fixture/result entry is still the Step 4
+admin form.
 
 ### 25. Notifications — 🔑 (M)
 **Touches:** prediction-deadline reminders and results notifications via email
 (reuses Step 7's service) and/or web push; per-user preferences.
-**Depends on:** 7.
+**Depends on:** 7. **Not started.**
 
-### 26. Mobile / responsive polish — 🤖 (M)
-**Touches:** make the 3-column play page and admin fully responsive (the sidebar
-is already a drawer); touch targets; small-screen layouts. (Native apps would be a
-separate project.)
-**Depends on:** 3–4.
+### 26. Mobile / responsive polish — ✅ DONE
+The sidebar is a slide-out drawer (toggle-based, not just a breakpoint
+collapse) and the 3-column play page collapses to a single column below
+1100px (`MakeYourCall.tsx`'s `grid-cols-1 min-[1100px]:grid-cols-[...]`).
+Native apps remain a separate, unstarted project.
 
 ---
 
@@ -344,14 +348,22 @@ separate project.)
 - **Step 7:** email provider key + a sending domain (DNS access).
 - **Steps 10–13:** accounts for DB host, backend host, Vercel, Sentry; a domain.
 - **Step 15/17:** a solicitor (data-protection + a gambling specialist).
-- **Step 18:** Stripe account + pricing decisions.
-- **Step 22:** club brand assets. **Step 23:** Google + Apple developer accounts.
-  **Step 24:** sports-data API subscription.
+- **Step 18:** Stripe account + live/test keys + pricing decisions (code is done).
+- **Step 22:** bespoke club brand assets beyond colours/crest, if a club wants them.
+- **Step 23:** an Apple Developer account ($99/yr) — Google is already live.
+- **Step 24:** sports-data API subscription.
 
-## Suggested default path
-2 → 3 → 4 → 5 → 27 → 28 (product complete) → stand up staging early (10→11→12→14)
-→ 6 → 7 → 8 → 9 (hardened) → 15/16 (launch docs) → **pilot launch** → 17 + 18 →
-19 → 20 (monetize) → 21 → 22 (sell to more clubs) → 23/24/25/26 (enhance).
+## Suggested default path — updated 2026-07-10
+Done: 1→2→3→4→5→27→28 (product complete) → 6→9 (hardened) → 18→20→21→22→23
+(Google)→26 landed together during the multi-club/payments push, ahead of
+the original sequencing.
+
+**Remaining, roughly in order:** stand up staging (10→11→12→13→14) → 7→8
+(email + password reset) → 15/16 (privacy/terms/GDPR docs) → **pilot
+launch** (private, no prizes, can precede 17) → 17 (gambling opinion, only
+if prizes attach to results) → flip on live Stripe keys for 18 → 19
+(refunds/billing self-service) → 24/25 (automated fixtures, notifications)
+→ Apple half of 23 (needs a paid Apple Developer account).
 
 > Note: a **private pilot with one club, no prizes** can launch after Phase A + a
 > staging deploy + basic policy docs — before the gambling opinion — because with
