@@ -298,12 +298,17 @@ webhook paths alike so all three stay consistent.
 
 ### 21. Multi-club isolation — ✅ DONE
 Landed in `34ffa27`, ahead of schedule (was gated on Phase E in the original
-plan; shipped alongside it instead). Fans pick a real Premier League club at
-signup; fixtures, predictions, and per-club leaderboards are scoped by
-`team_id` (`2026-07-08-fixtures-team-fk.sql`); a second **league-wide**
-leaderboard spans every club (`2026-07-08-dual-leaderboard.sql`) with its
-own navy/orange identity distinct from club branding. Admin actions remain
-scoped per club.
+plan; shipped alongside it instead). **Business model reminder:** FanCall is
+a single-club product the company sells to individual clubs (Man City is
+the launch customer) — each club's fans get their own space, not a
+"pick any Premier League club" consumer app. This step is the multi-tenant
+technical foundation that makes selling separate club-branded instances
+possible from one shared codebase: fixtures, predictions, and per-club
+leaderboards are scoped by `team_id` (`2026-07-08-fixtures-team-fk.sql`),
+with admin actions scoped per club too. It also enables an optional
+**overall/cross-club leaderboard** spanning every club on the platform
+(`2026-07-08-dual-leaderboard.sql`, distinct navy/orange identity) —
+a nice-to-have across FanCall's customers, not the core product.
 
 ### 22. Per-club branding / white-label — ✅ DONE
 Theme tokens flow per-club through `teams.primary_color`/`secondary_color`
