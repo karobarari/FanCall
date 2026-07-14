@@ -66,7 +66,7 @@ something only you can provide, do everything in my power and hand you the rest)
 | 21 | Multi-club isolation (scope data by team) | ✅ | F |
 | 22 | Per-club branding / white-label theming | ✅ | F |
 | 23 | Google / Apple OAuth | ✅ Google / 🔑 Apple | F |
-| 24 | Automated fixtures + results feed → auto-settle | 🔑 | F |
+| 24 | Automated fixtures + results feed → auto-settle | partial / 🔑 | F |
 | 25 | Notifications (reminders / results) | 🔑 | F |
 | 26 | Mobile / responsive polish | ✅ | F |
 | 27 | User profile self-service (username, password, avatar) | ✅ | A |
@@ -327,14 +327,27 @@ path is complete but disabled — it needs a paid **Apple Developer account**
 ($99/yr) plus `APPLE_CLIENT_ID`/`APPLE_TEAM_ID`/`APPLE_KEY_ID`/
 `APPLE_PRIVATE_KEY` before it can go live (see `server/.env.example`).
 
-### 24. Automated fixtures + results → auto-settle — 🔑 (M/L)
+### 24. Automated fixtures + results → auto-settle — ◑ PARTIAL / 🔑
 **Goal:** stop entering fixtures/results by hand.
-**You unlock:** a sports-data API subscription (API-Football, Sportmonks, or Opta —
-I'll compare cost/coverage).
-**Touches:** scheduled ingestion of fixtures; results polling that calls
-`settle_fixture` automatically; reconciliation/override in admin.
-**Depends on:** 4. **Not started** — fixture/result entry is still the Step 4
-admin form.
+**Built (2026-07-14):** integration against **football-data.org's free tier**
+(Premier League, no card). `server/src/modules/fixtures/footballData.service.ts`
+fetches the season's matches, maps provider team names to FanCall teams,
+upserts fixtures, and auto-settles finished matches via the existing
+`settle_fixture` function. Exposed as **`POST /api/fixtures/sync`** (admin-only),
+returning a summary (`created/updated/settled/skipped`). Reads
+`FOOTBALL_DATA_API_KEY` from env — unset, the route 503s and manual entry
+(Step 4) still works, so this is a safe no-op until configured.
+**Still to fully integrate (the 🔑 + remaining work):**
+1. Get a free API key (register at football-data.org) and set `FOOTBALL_DATA_API_KEY`.
+2. **A scheduler** — nothing calls `/sync` automatically yet; needs a cron/worker
+   to poll on a cadence (e.g. hourly on matchdays). Mind the 10 req/min free limit.
+3. An admin **"Sync now"** button in the Fixtures tab (currently endpoint-only).
+4. **Live verification** — the sync has only been compile/logic-checked; it has
+   never run against the real API (no key yet). Team-name matching in particular
+   needs a real-data check, since FanCall's seeded 20 clubs are a partly
+   fictional list and won't all match the real PL feed (unmatched clubs are
+   skipped and reported, by design).
+**Depends on:** 4.
 
 ### 25. Notifications — 🔑 (M)
 **Touches:** prediction-deadline reminders and results notifications via email

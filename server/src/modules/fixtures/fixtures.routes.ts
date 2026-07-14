@@ -11,6 +11,7 @@ import {
   createFixture, // ── NEW ──
   updateFixture, // ── NEW ──
 } from "./fixtures.service";
+import { syncPremierLeagueFixtures } from "./footballData.service";
 
 export const fixturesRoutes = Router();
 
@@ -72,6 +73,22 @@ fixturesRoutes.post(
       parsed.data.away_score,
     );
     res.json({ fixture });
+  }),
+);
+
+// POST /api/fixtures/sync  (admin only)
+// Pulls the Premier League season's fixtures + results from the
+// football-data.org free feed, upserts them, and auto-settles finished
+// matches — replacing manual fixture entry. Returns a summary of what changed.
+// 503s until FOOTBALL_DATA_API_KEY is set. Manual trigger for now; a scheduler
+// to call this on a cadence is the remaining "fully integrate" work.
+fixturesRoutes.post(
+  "/sync",
+  requireAuth,
+  asyncHandler(requireAdmin),
+  asyncHandler(async (_req, res) => {
+    const summary = await syncPremierLeagueFixtures();
+    res.json({ summary });
   }),
 );
 

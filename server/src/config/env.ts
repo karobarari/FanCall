@@ -46,6 +46,14 @@ const schema = z.object({
   // RYG's cut of a charge when a club has no per-club override
   // (teams.platform_fee_bps). 3000 = 30%, per the stakeholder's 70/30 split.
   DEFAULT_PLATFORM_FEE_BPS: z.coerce.number().int().min(0).max(10000).default(3000),
+
+  // football-data.org free API key (register at football-data.org — no card).
+  // Powers the automated Premier League fixtures/results sync. Optional, same
+  // 503-if-unset behaviour as the others: POST /api/fixtures/sync refuses with
+  // 503 until this is set, so the app runs fine on manual fixture entry
+  // without it. NOTE: this is a partial integration — a scheduler still needs
+  // to call the sync on a cadence (see PRODUCTION-ROADMAP.md step 24).
+  FOOTBALL_DATA_API_KEY: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
