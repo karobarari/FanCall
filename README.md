@@ -46,7 +46,8 @@ See **[ARCHITECTURE.md](./ARCHITECTURE.md)** for a per-file description and
 createdb fancall
 psql -d fancall -f db/schema.sql        # schema only
 psql -d fancall -f db/seed-teams.sql    # the 20-club Premier League list
-psql -d fancall -f db/seed.sql          # optional: a few sample fixtures
+psql -d fancall -f db/seed.sql          # optional: Man City sample fixtures (GW1-5)
+psql -d fancall -f db/seed-fixtures-all.sql  # optional: a slate for every club (GW6-10)
 psql -d fancall -f db/seed-plans.sql    # optional: default £10/£15/£1.50 club pricing
 ```
 
