@@ -148,10 +148,11 @@ export async function syncPremierLeagueFixtures(): Promise<SyncSummary> {
     const gameweek = m.matchday;
     const kickoff = m.utcDate;
 
-    // Upsert without ON CONFLICT: the fixtures identity unique index has
-    // drifted between name-based and id-based variants across environments
-    // (see the 2026-07-02 migration vs. schema.sql), so a select-then-write is
-    // robust to either. Safe here because the sync runs as one serial job.
+    // Upsert without ON CONFLICT. The fixtures identity index is canonically
+    // id-based now (the 2026-07-14 reconcile migration converged it), but a
+    // DB that hasn't run that migration could still carry the old name-based
+    // variant — select-then-write is robust to either and needs no conflict
+    // target. Safe here because the sync runs as one serial job.
     const existing = await pool.query<{
       id: string;
       status: string;
