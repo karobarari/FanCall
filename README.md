@@ -47,6 +47,7 @@ createdb fancall
 psql -d fancall -f db/schema.sql        # schema only
 psql -d fancall -f db/seed-teams.sql    # the 20-club Premier League list
 psql -d fancall -f db/seed.sql          # optional: a few sample fixtures
+psql -d fancall -f db/seed-plans.sql    # optional: default £10/£15/£1.50 club pricing
 ```
 
 ### 2. Backend (`server/`)
