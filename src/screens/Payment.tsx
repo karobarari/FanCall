@@ -80,6 +80,12 @@ export default function Payment() {
   const directPlan = plans.find((p) => p.channel === "direct");
   const subscriptionPlan = plans.find((p) => p.channel === "subscription");
   const hasRealPlans = Boolean(directPlan || subscriptionPlan);
+  // The demo "pay" path (no real charge) is a local-dev convenience that keeps
+  // the signup -> unlock -> predict loop exercisable without Stripe. Show it
+  // only in dev, and alongside real plans rather than only when none are
+  // seeded, so loading a club's real prices doesn't remove the way to unlock
+  // locally. It's hidden in production builds — real fans never see it.
+  const showDemo = import.meta.env.DEV;
 
   return (
     <div className="flex-1 flex flex-col justify-center p-4 gap-3">
@@ -90,7 +96,7 @@ export default function Payment() {
         Subscribe to start predicting for {user.team_name}.
       </p>
 
-      {!plansLoading && hasRealPlans ? (
+      {!plansLoading && hasRealPlans && (
         <div className="flex flex-col gap-2.5">
           {subscriptionPlan && (
             <div className="border border-[#e4e3de] rounded-xl p-4 flex flex-col gap-1">
@@ -124,25 +130,29 @@ export default function Payment() {
             </div>
           )}
         </div>
-      ) : (
-        !plansLoading && (
-          <div className="border border-[#e4e3de] rounded-xl p-4 flex flex-col gap-1">
-            <span className="text-[13px] text-[#73726c]">Monthly plan</span>
+      )}
+
+      {!plansLoading && showDemo && (
+        <div className="border border-dashed border-[#e4e3de] rounded-xl p-4 flex flex-col gap-1">
+          <span className="text-[13px] text-[#73726c]">
+            {hasRealPlans ? "Dev shortcut" : "Monthly plan"}
+          </span>
+          {!hasRealPlans && (
             <span className="text-[28px] font-bold text-[#1a1a18]">
               £4.99<span className="text-[15px] font-normal text-[#73726c]">/mo</span>
             </span>
-            <span className="text-[12px] text-[#73726c] mt-2">
-              Demo only — no card will be charged.
-            </span>
-            <button
-              className="h-12 mt-2 rounded-xl bg-[#0f6e56] text-white border-0 text-[15px] font-medium cursor-pointer w-full active:scale-[0.99]"
-              disabled={busy}
-              onClick={demoPay}
-            >
-              {busy ? "Processing…" : "Pay & Continue"}
-            </button>
-          </div>
-        )
+          )}
+          <span className="text-[12px] text-[#73726c] mt-1">
+            Demo only — no card will be charged.
+          </span>
+          <button
+            className="h-12 mt-2 rounded-xl bg-[#0f6e56] text-white border-0 text-[15px] font-medium cursor-pointer w-full active:scale-[0.99]"
+            disabled={busy}
+            onClick={demoPay}
+          >
+            {busy ? "Processing…" : hasRealPlans ? "Skip payment (dev)" : "Pay & Continue"}
+          </button>
+        </div>
       )}
 
       {error && (
