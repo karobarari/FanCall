@@ -73,7 +73,9 @@ describe('fixtures routes (live integration)', () => {
         kickoff: futureIso(48),
       });
 
-      const gw1 = await admin.get('/api/fixtures?gameweek=1');
+      // scope=all so the season/gameweek filter is tested independently of the
+      // default club scoping (neither fixture involves the admin's own club).
+      const gw1 = await admin.get('/api/fixtures?scope=all&gameweek=1');
       expect(gw1.body.fixtures).toHaveLength(1);
       expect(gw1.body.fixtures[0].home_team).toBe('Arsenal');
     });
@@ -103,9 +105,38 @@ describe('fixtures routes (live integration)', () => {
       expect(res.body.fixtures).toHaveLength(1);
       expect(res.body.fixtures[0].id).toBe(mine.body.fixture.id);
 
-      // Admin still sees every club's fixtures, for management.
-      const adminView = await admin.get('/api/fixtures');
-      expect(adminView.body.fixtures).toHaveLength(2);
+      // A non-admin can't escape club scoping via scope=all — it's ignored.
+      const spoof = await player.get('/api/fixtures?scope=all');
+      expect(spoof.body.fixtures).toHaveLength(1);
+      expect(spoof.body.fixtures[0].id).toBe(mine.body.fixture.id);
+    });
+
+    it("scopes the admin's own view to their club by default, but scope=all sees every club", async () => {
+      const admin = await adminAgent();
+      // The admin signs up under Man City, so only this fixture is theirs.
+      const mine = await admin.post('/api/fixtures').send({
+        season: '2025/26',
+        gameweek: 1,
+        home_team: 'Manchester City',
+        away_team: 'Chelsea',
+        kickoff: futureIso(24),
+      });
+      await admin.post('/api/fixtures').send({
+        season: '2025/26',
+        gameweek: 1,
+        home_team: 'Liverpool',
+        away_team: 'Everton',
+        kickoff: futureIso(24),
+      });
+
+      // Default (prediction page): scoped to the admin's own club.
+      const scoped = await admin.get('/api/fixtures');
+      expect(scoped.body.fixtures).toHaveLength(1);
+      expect(scoped.body.fixtures[0].id).toBe(mine.body.fixture.id);
+
+      // scope=all (management view): every club's fixtures.
+      const all = await admin.get('/api/fixtures?scope=all');
+      expect(all.body.fixtures).toHaveLength(2);
     });
   });
 
@@ -200,7 +231,8 @@ describe('fixtures routes (live integration)', () => {
       const admin = await adminAgent();
       const id = await createDraftFixture(admin);
 
-      const created = await admin.get('/api/fixtures');
+      // scope=all: the fixture is Arsenal v Chelsea, not the admin's own club.
+      const created = await admin.get('/api/fixtures?scope=all');
       const fixture = created.body.fixtures.find((f: { id: string }) => f.id === id);
       expect(fixture.locked).toBe(false);
 

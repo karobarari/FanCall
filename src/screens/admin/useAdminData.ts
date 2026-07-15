@@ -27,7 +27,9 @@ export function useAdminData() {
  const loadFixtures = useCallback(async () => {
    setFxState("loading");
    try {
-     const res = await fetch(API.fixtures, { credentials: "include" });
+     // Management view manages every club, so it reads the unfiltered list —
+     // the plain /fixtures endpoint is now scoped to the admin's own club.
+     const res = await fetch(API.allFixtures, { credentials: "include" });
      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
      const json: unknown = await res.json();

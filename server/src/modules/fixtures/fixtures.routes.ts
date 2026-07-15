@@ -16,10 +16,14 @@ import { syncPremierLeagueFixtures } from "./footballData.service";
 export const fixturesRoutes = Router();
 
 // GET /api/fixtures?season=2025/26&gameweek=1
-// Scoped to the caller's own club (home OR away — a fixture is visible to
-// both clubs playing in it) so a Man City fan can't spoof Arsenal's list by
-// changing a query param; admin sees every club's fixtures unfiltered, for
-// the fixture-management view.
+// Scoped by default to the caller's own club (home OR away — a fixture is
+// visible to both clubs playing in it), so every user — admin included — sees
+// only their own team's fixtures on the prediction page, and a fan can't spoof
+// another club's list by changing a query param.
+//
+// scope=all lifts the club filter to return every club's fixtures — the
+// admin-only fixture-management view. It's ignored for non-admins (they stay
+// scoped to their club regardless), so it can't be used to escape scoping.
 fixturesRoutes.get(
   "/",
   requireAuth,
@@ -37,7 +41,8 @@ fixturesRoutes.get(
     const caller = rows[0];
     if (!caller) throw new HttpError(401, "Not authenticated");
 
-    const teamId = isAdminEmail(caller.email) ? undefined : caller.team_id;
+    const wantsAll = req.query.scope === "all" && isAdminEmail(caller.email);
+    const teamId = wantsAll ? undefined : caller.team_id;
     const fixtures = await listFixtures(season, gameweek, teamId);
     res.json({ fixtures });
   }),

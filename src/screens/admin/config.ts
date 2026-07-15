@@ -5,6 +5,10 @@ const API_BASE = "http://localhost:3000/api";
 ==================================================================== */
 export const API = {
   fixtures: `${API_BASE}/fixtures`, //                 GET -> { fixtures }, POST -> { fixture }
+  // scope=all: fixtures are club-scoped by default (see fixtures.routes.ts), so
+  // the admin management view — which manages every club — must opt in to the
+  // unfiltered list. Admin-only; ignored for non-admins.
+  allFixtures: `${API_BASE}/fixtures?scope=all`, //    GET -> { fixtures }
   fixture: (id: string) => `${API_BASE}/fixtures/${id}`, //          PATCH -> { fixture }
   settle: (id: string) => `${API_BASE}/fixtures/${id}/settle`, //    POST  -> { fixture }
   // scope=league: admin manages every club, so its leaderboard/stats span
