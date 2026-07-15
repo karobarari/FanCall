@@ -13,6 +13,12 @@ import Avatar from '../components/Avatar';
 // permanent part of the row.
 const RANK_INDICATOR_MS = 4000;
 
+// The cross-club "League" scope is the multi-tenant/platform view. It's
+// disabled for now (single-club product); flip this to re-expose the League
+// tab. When false, the screen shows only the club leaderboard and the scope
+// tab bar is hidden.
+const LEAGUE_LEADERBOARD_ENABLED = false;
+
 type Scope = 'club' | 'league';
 
 // Tracks a leaderboard's own previous ranks so a settle/refresh that moves
@@ -136,14 +142,16 @@ export default function Leaderboard() {
         )}
       </header>
 
-      <div className="flex gap-2 mb-4">
-        <ScopeTab active={scope === 'club'} onClick={() => setScope('club')}>
-          My Club
-        </ScopeTab>
-        <ScopeTab active={scope === 'league'} onClick={() => setScope('league')}>
-          League
-        </ScopeTab>
-      </div>
+      {LEAGUE_LEADERBOARD_ENABLED && (
+        <div className="flex gap-2 mb-4">
+          <ScopeTab active={scope === 'club'} onClick={() => setScope('club')}>
+            My Club
+          </ScopeTab>
+          <ScopeTab active={scope === 'league'} onClick={() => setScope('league')}>
+            League
+          </ScopeTab>
+        </div>
+      )}
 
       <section className="bg-panel border border-white/10 rounded-card p-[18px] max-w-[640px]">
         {loading && leaderboard.length === 0 ? (
