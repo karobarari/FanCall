@@ -85,6 +85,9 @@ describe('GET /api/leaderboard (live integration)', () => {
       kickoff: futureIso(24),
     });
     const fixtureId = created.body.fixture.id;
+    // New fixtures default to locked (see fixtures.service.ts) — open it so
+    // Alice can predict.
+    await admin.patch(`/api/fixtures/${fixtureId}`).send({ locked: false });
 
     // Alice predicts the exact result; Bob never submits.
     await alice.post('/api/predictions').send({

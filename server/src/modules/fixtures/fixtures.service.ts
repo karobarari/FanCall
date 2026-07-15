@@ -16,6 +16,14 @@ const FIXTURE_COLUMNS = `id, season, gameweek, home_team, away_team,
 // to 'upcoming' to match (it previously read 'scheduled', which would have made
 // any default-status fixture silently reject all predictions).
 const NEW_FIXTURE_STATUS = "upcoming";
+// New fixtures start locked: an admin schedules a fixture, sets it up, then
+// deliberately opens it to predictions by unlocking (PATCH locked:false). This
+// prevents a just-added fixture from silently accepting predictions before the
+// admin means it to. The schema column DEFAULT stays false — this is the
+// manual-create workflow's choice, applied explicitly at insert, and doesn't
+// change the football-data sync path (which schedules real, already-open
+// fixtures).
+const NEW_FIXTURE_LOCKED = true;
 function isUniqueViolation(err: unknown): boolean {
   return (
     typeof err === "object" &&
@@ -111,8 +119,8 @@ export async function createFixture(input: FixtureInput) {
 
   try {
     const { rows } = await pool.query(
-      `insert into fixtures (season, gameweek, home_team, away_team, home_team_id, away_team_id, kickoff, status)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)
+      `insert into fixtures (season, gameweek, home_team, away_team, home_team_id, away_team_id, kickoff, status, locked)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        returning ${FIXTURE_COLUMNS}`,
       [
         input.season,
@@ -123,6 +131,7 @@ export async function createFixture(input: FixtureInput) {
         awayTeam.id,
         input.kickoff,
         NEW_FIXTURE_STATUS,
+        NEW_FIXTURE_LOCKED,
       ],
     );
     return rows[0];

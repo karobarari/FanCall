@@ -17,7 +17,12 @@ async function createFixture(
     away_team: overrides.away_team ?? 'Chelsea',
     kickoff: overrides.kickoff ?? futureIso(24),
   });
-  return res.body.fixture.id as string;
+  const id = res.body.fixture.id as string;
+  // New fixtures default to locked (see fixtures.service.ts). These tests are
+  // about prediction behavior on an *open* fixture, so open it — the specific
+  // lock tests below re-lock explicitly.
+  await admin.patch(`/api/fixtures/${id}`).send({ locked: false });
+  return id;
 }
 
 describe('predictions routes (live integration)', () => {
@@ -205,6 +210,29 @@ describe('predictions routes (live integration)', () => {
       const alice = await newUser('alice@test.dev', 'alice_1');
       const res = await alice.post('/api/predictions').send({
         fixture_id: fixtureId,
+        home_pred: 2,
+        away_pred: 1,
+        result_pred: 'home',
+      });
+      expect(res.status).toBe(409);
+    });
+
+    it('rejects a prediction on a freshly created fixture, since new fixtures default to locked', async () => {
+      const admin = await newUser('admin@test.dev', 'admin_1');
+      // Created directly, NOT via the createFixture helper (which opens it) —
+      // this asserts the default-locked behavior end to end.
+      const created = await admin.post('/api/fixtures').send({
+        season: '2025/26',
+        gameweek: 1,
+        home_team: 'Arsenal',
+        away_team: 'Chelsea',
+        kickoff: futureIso(24),
+      });
+      expect(created.body.fixture.locked).toBe(true);
+
+      const alice = await newUser('alice@test.dev', 'alice_1');
+      const res = await alice.post('/api/predictions').send({
+        fixture_id: created.body.fixture.id,
         home_pred: 2,
         away_pred: 1,
         result_pred: 'home',
