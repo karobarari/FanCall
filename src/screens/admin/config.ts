@@ -1,10 +1,14 @@
 import { LayoutGrid, Calendar, CreditCard, Users, type LucideIcon } from "lucide-react";
-const API_BASE = "http://localhost:3000/api";
+// Same env var as src/lib/api.ts, so the admin screens hit the same API in
+// every environment. Set VITE_API_URL at build time for production; falls back
+// to the local dev server otherwise.
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
 /* ==================================================================
    API endpoints. Adjust these if your routes differ.
 ==================================================================== */
 export const API = {
   fixtures: `${API_BASE}/fixtures`, //                 GET -> { fixtures }, POST -> { fixture }
+  syncFixtures: `${API_BASE}/fixtures/sync`, //        POST -> { summary }  (pull current season)
   // scope=all: fixtures are club-scoped by default (see fixtures.routes.ts), so
   // the admin management view — which manages every club — must opt in to the
   // unfiltered list. Admin-only; ignored for non-admins.
@@ -18,6 +22,7 @@ export const API = {
   users: `${API_BASE}/admin/users`, //                 GET -> { users }
   user: (id: string) => `${API_BASE}/admin/users/${id}`, //         PATCH -> { user }
   userStatus: (id: string) => `${API_BASE}/admin/users/${id}/status`, // PATCH -> { user }
+  resetSeason: `${API_BASE}/admin/season/reset`, //    POST -> { summary }
 };
 
 // Optional: set to your club's exact team name to highlight it in the table.

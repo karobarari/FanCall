@@ -36,7 +36,7 @@ See **[ARCHITECTURE.md](./ARCHITECTURE.md)** for a per-file description and
 ## Prerequisites
 
 - Node.js (18+) and npm
-- PostgreSQL 16
+- PostgreSQL 16+ (13 is the hard minimum — the schema uses core `gen_random_uuid()`; dev currently runs 18)
 
 ## Setup
 
