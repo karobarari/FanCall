@@ -1,5 +1,8 @@
 import { LayoutGrid, Calendar, CreditCard, Users, type LucideIcon } from "lucide-react";
-const API_BASE = "http://localhost:3000/api";
+// Same env var as src/lib/api.ts, so the admin screens hit the same API in
+// every environment. Set VITE_API_URL at build time for production; falls back
+// to the local dev server otherwise.
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
 /* ==================================================================
    API endpoints. Adjust these if your routes differ.
 ==================================================================== */
