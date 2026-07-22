@@ -19,10 +19,16 @@ const PENDING_COOKIE = 'fancall_oauth_pending';
 // Short-lived and scoped to /api/auth — these never carry session privileges,
 // they just survive the round trip to the provider and back (state/verifier)
 // or the short gap before a new user finishes picking a team (pending).
+// sameSite mirrors the session cookie (see session.ts): 'none' + secure in
+// prod so these survive the frontend and API being on different domains. The
+// pending cookie in particular is read by POST /api/auth/oauth/complete, which
+// the frontend calls as a cross-site fetch — a 'lax' cookie is never sent on
+// that, so a new user could never finish signup cross-domain. 'lax' over HTTP
+// in dev, where frontend and API share localhost.
 const FLOW_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProd,
-  sameSite: 'lax' as const,
+  sameSite: isProd ? ('none' as const) : ('lax' as const),
   path: '/api/auth',
   maxAge: 10 * 60 * 1000,
 };
