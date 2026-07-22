@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { env } from './config/env';
+import { env, isProd } from './config/env';
 import { AVATAR_UPLOADS_DIR } from './lib/avatarUpload';
 import { authRoutes } from './modules/auth/auth.routes';
 import { avatarUploadRoutes } from './modules/auth/avatarUpload.routes';
@@ -104,6 +104,24 @@ export function createApp() {
   // chance to run.
   app.use('/api/admin/clubs', clubOnboardingRoutes);
   app.use('/api/admin/clubs', clubPlansRoutes);
+
+  // Single-origin production deploy: the API also serves the built frontend, so
+  // the SPA and the API share one origin. That removes the cross-site session
+  // cookie entirely (it becomes same-origin), which is what makes login work in
+  // browsers that block third-party cookies (Safari/iOS, and increasingly
+  // Chrome). Any GET that isn't an /api or /uploads path falls through to
+  // index.html so client-side routing (deep links, refresh) works. Gated on
+  // prod so `npm run dev` keeps proxying to the Vite dev server instead.
+  if (isProd) {
+    const clientDist =
+      process.env.CLIENT_DIST_DIR ?? path.resolve(__dirname, '..', '..', 'dist');
+    app.use(express.static(clientDist));
+    app.use((req, res, next) => {
+      if (req.method !== 'GET') return next();
+      if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
+      res.sendFile(path.join(clientDist, 'index.html'));
+    });
+  }
 
   app.use(notFound);
   app.use(errorHandler);
