@@ -6,6 +6,15 @@ import { z } from "zod";
 // here instead of surfacing as a confusing runtime error later.
 const schema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  // Whether to open the Postgres connection over TLS. Off by default so local
+  // dev (and Render's same-region *internal* DB URL, which doesn't use SSL)
+  // just works. Set DATABASE_SSL=true when pointing at a managed DB that
+  // requires TLS — e.g. Render's *external* connection string, Supabase, Neon.
+  // Accepts true/1/yes.
+  DATABASE_SSL: z
+    .enum(["true", "false", "1", "0", "yes", "no"])
+    .default("false")
+    .transform((v) => v === "true" || v === "1" || v === "yes"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET should be a long random string"),
   CLIENT_ORIGIN: z.string().default("http://localhost:5173"),
   PORT: z.coerce.number().default(3000),

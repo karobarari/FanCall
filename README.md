@@ -42,6 +42,8 @@ See **[ARCHITECTURE.md](./ARCHITECTURE.md)** for a per-file description and
 
 ### 1. Database
 
+Manual (local, with `psql` on your PATH):
+
 ```bash
 createdb fancall
 psql -d fancall -f db/schema.sql        # schema only
@@ -50,6 +52,23 @@ psql -d fancall -f db/seed.sql          # optional: Man City sample fixtures (GW
 psql -d fancall -f db/seed-fixtures-all.sql  # optional: a slate for every club (GW6-10)
 psql -d fancall -f db/seed-plans.sql    # optional: default £10/£15/£1.50 club pricing
 ```
+
+Scripted (no `psql` needed — uses `DATABASE_URL`/`DATABASE_SSL`; good for CI and
+hosted DBs like Render). Run from `server/`:
+
+```bash
+npm run db:setup:dev                    # schema + team & plan seeds on a fresh DB
+npm run db:setup:dev -- --fixtures      # also load the sample fixtures
+npm run db:migrate:dev                  # apply any migrations added since setup
+```
+
+`db:setup` provisions a fresh DB from `db/schema.sql` (which already contains
+every migration) and records the current migrations as a baseline; it refuses to
+run on an already-provisioned DB (pass `--force` to override). Add later schema
+changes as new files in `server/src/db/migrations/` and apply them with
+`db:migrate`. In a deployed/production build the same commands exist without the
+`:dev` suffix (`npm run db:setup` / `npm run db:migrate`), running the compiled
+`dist/` scripts after `npm run build`.
 
 ### 2. Backend (`server/`)
 

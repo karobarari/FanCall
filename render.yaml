@@ -1,0 +1,69 @@
+# Render Blueprint — provisions the FanCall API (Express) and web (Vite SPA).
+# Deploy via Render dashboard → New → Blueprint → point at this repo.
+#
+# What still needs a human afterwards (see the `sync: false` vars below and the
+# README deploy guide):
+#   1. Fill in DATABASE_URL (your Neon connection string) + ADMIN_EMAIL on the API.
+#   2. After the first deploy, open the API service Shell and run `npm run db:setup`.
+#   3. Set VITE_API_URL on the web service to the API's URL + /api, then redeploy.
+#   4. Set CLIENT_ORIGIN on the API to the web service's URL, then redeploy.
+# Steps 3/4 are a two-pass because each service needs the other's final URL, and
+# Blueprint env vars can't concatenate a scheme/path onto a referenced host.
+
+services:
+  # ---- Backend: Express API -------------------------------------------------
+  - type: web
+    name: fancall-api
+    runtime: node
+    rootDir: server
+    plan: starter          # a persistent disk requires a paid instance (not free)
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    # Persistent disk for uploaded avatars — the container filesystem is wiped on
+    # every redeploy, so without this they'd vanish. AVATAR_UPLOADS_DIR points here.
+    disk:
+      name: avatars
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AVATAR_UPLOADS_DIR
+        value: /var/data/avatars
+      # Neon is external Postgres → TLS required.
+      - key: DATABASE_SSL
+        value: "true"
+      # Render generates a strong random secret and keeps it stable across deploys.
+      - key: JWT_SECRET
+        generateValue: true
+      # Fill these in the dashboard (secrets / values Render can't know):
+      - key: DATABASE_URL     # your Neon connection string
+        sync: false
+      - key: ADMIN_EMAIL      # the one account allowed to settle fixtures
+        sync: false
+      - key: CLIENT_ORIGIN    # set to the fancall-web URL after its first deploy
+        sync: false
+      # Optional integrations — leave unset to keep those routes disabled (503).
+      # Keep STRIPE_* unset until the GDPR/gambling legal gates clear.
+      # - key: GOOGLE_CLIENT_ID
+      # - key: GOOGLE_CLIENT_SECRET
+      # - key: GOOGLE_REDIRECT_URI
+      # - key: FOOTBALL_DATA_API_KEY
+
+  # ---- Frontend: Vite React SPA (static) ------------------------------------
+  - type: web
+    name: fancall-web
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Baked in at build time → set this to the fancall-api URL + /api, then
+      # trigger a redeploy of this service.
+      - key: VITE_API_URL     # e.g. https://fancall-api.onrender.com/api
+        sync: false
+    # SPA fallback so React Router deep links don't 404.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

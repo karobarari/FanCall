@@ -22,6 +22,14 @@ import { notFound, errorHandler } from './middleware/error';
 export function createApp() {
   const app = express();
 
+  // Render (and most PaaS hosts) put the app behind a single reverse proxy that
+  // terminates TLS and sets X-Forwarded-For / X-Forwarded-Proto. Trust exactly
+  // one hop so req.ip is the real client IP (not the proxy's) — express-rate-limit
+  // keys on it, so without this every request shares the proxy's IP and one
+  // user's failed logins would rate-limit everyone. Trusting just 1 hop (not
+  // `true`) means clients can't spoof the header to dodge the limit.
+  app.set('trust proxy', 1);
+
   app.use(helmet());
   // credentials: true is required for the session cookie to flow to the frontend.
   //

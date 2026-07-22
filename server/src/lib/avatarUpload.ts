@@ -13,10 +13,17 @@ const MIME_TO_EXT: Record<string, string> = {
 // Configurable so a real deployment can point this at a mounted persistent
 // disk; defaults to a folder next to wherever the process is run from,
 // which is fine for local dev (single instance, no redeploy in between).
+const configuredUploadsDir = process.env.AVATAR_UPLOADS_DIR;
 const UPLOADS_DIR =
-  process.env.AVATAR_UPLOADS_DIR ?? path.join(process.cwd(), 'uploads', 'avatars');
+  configuredUploadsDir ?? path.join(process.cwd(), 'uploads', 'avatars');
 
 export const AVATAR_UPLOADS_DIR = UPLOADS_DIR;
+
+// True when we fell back to the process-relative default instead of an
+// explicitly configured directory. That default is ephemeral on hosts like
+// Render (the filesystem is wiped on every redeploy/restart), so the entry
+// point warns about it at startup in production — see index.ts.
+export const AVATAR_UPLOADS_IS_EPHEMERAL = !configuredUploadsDir;
 
 function filenamesFor(userId: string): string[] {
   return Object.values(MIME_TO_EXT).map((ext) => `${userId}.${ext}`);
